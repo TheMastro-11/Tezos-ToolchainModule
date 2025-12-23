@@ -1,6 +1,7 @@
 ﻿# Ambiente virtuale Python
 venv/
 env/
+.env
 .venv/
 .envrc
 */ambientevirtuale*/

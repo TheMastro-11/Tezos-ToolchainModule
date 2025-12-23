@@ -7,6 +7,7 @@ import asyncio
 import uuid
 import streamlit as st
 from datetime import datetime, timedelta
+import requests
 sys.path.append(os.path.join(os.path.dirname(__file__), "Solana_module"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "Tezos_module"))
 
@@ -317,14 +318,46 @@ ETH_WALLETS_PATH = os.path.join("Ethereum_module", "ethereum_wallets")
 # ==============================
 # ROUTE Wallet Balance Ethereum
 # ==============================
+#get gas price with api
+load_dotenv()
+apiKey = os.getenv("BLOCKPI_API_KEY")
+BLOCKPI_URL = f"https://ethereum.blockpi.network/v1/rpc/{apiKey}"
+
+@app.route("/get_info", methods=["GET"])
+def get_gas_price():
+    payload = [
+        {"jsonrpc": "2.0", "method": "eth_gasPrice", "params": [], "id": 1},
+        {"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 2}
+    ]
+    response = requests.post(
+        BLOCKPI_URL,
+        json=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    if response.status_code == 200:
+        data = response.json()
+        return jsonify({
+            "gas_price": data[0] if len(data) > 0 else None,
+            "block_num": data[1] if len(data) > 1 else None
+        })
+    else:
+        return jsonify({"error": "API request failed"}), 500
+    
+
+    
+
+
+
+
+
 @app.route("/eth_wallet_balance", methods=["POST"])
 def eth_wallet_balance():
     
     if not ETHEREUM_ENABLED:
         return jsonify({"error": "Ethereum modules not available"}), 500
         
-    wallet_file = request.json.get("wallet_file")  # es. "localhost_weth3.json"
-    network = request.json.get("network")           # es. "localhost"    
+    wallet_file = request.json.get("wallet_file")  
+    network = request.json.get("network")               
     if not wallet_file:
         return jsonify({"error": "No wallet selected"}), 400
 

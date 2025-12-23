@@ -4,6 +4,7 @@ import sys
 import requests
 import json
 import asyncio
+import pandas as pd
 
 root_path = os.path.join(os.path.dirname(__file__), "..")
 sys.path.append(root_path)
@@ -85,7 +86,7 @@ st.title("⚡ Ethereum Toolchain")
 st.sidebar.header("Menu")
 selected_action = st.sidebar.radio(
     "Select Action",
-    ("Manage Wallets", "Upload new contract", "Compile & Deploy", "Interactive data insertion", "Execution Traces")
+    ("Info", "Manage Wallets", "Upload new contract", "Compile & Deploy", "Interactive data insertion", "Execution Traces")
 )
 
 WALLETS_PATH = os.path.join(root_path, "Ethereum_module", "ethereum_wallets")
@@ -96,6 +97,39 @@ DEPLOYMENTS_PATH = os.path.join(root_path, "Ethereum_module", "hardhat_module", 
 # Main section
 # ==============================
 st.header(f"{selected_action}")
+
+#provo a fare caching nel frontend
+@st.cache_data(ttl=10)
+def get_ethereum_info():
+    
+    try:
+        res = requests.get(
+            "http://127.0.0.1:5000/get_info"
+        )
+        if res.status_code == 200:
+            data = res.json()
+            #convert from wei to gwei
+            gas_value = int(data["gas_price"]["result"],16)/ 1e9
+            block_num = int(data["block_num"]["result"],16)
+            return {"gas_value" : gas_value , "block_num" : block_num}
+        else:
+            return {"error" : res.json().get("error", "Unknown error")}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Backend connection error: {e}"}
+
+
+if selected_action == "Info":
+    print("cache hit")
+    info = get_ethereum_info()
+    if "error" in info:
+        st.error(info["error"])
+    else:
+                  
+            st.table([
+                ["Gas Price", info["gas_value"]],
+                ["Block Number", info["block_num"]]
+            ])
+
 
 if selected_action == "Manage Wallets":
     if not os.path.exists(WALLETS_PATH):

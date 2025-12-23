@@ -22,11 +22,7 @@ def _remove_extension(filename: str) -> str:
 # VERSIONE HEADLESS: COMPILAZIONE E DEPLOY TUTTO JSON
 # =====================================================
 def compile_and_deploy_programs(wallet_name=None, cluster="Devnet", deploy=False, single_program=None):
-    """Headless compile -> optional anchorpy init -> optional deploy pipeline.
 
-    Returns a JSON-friendly dict per program with compile/deploy results, IDs,
-    and any errors. Supports selecting a single program by filename.
-    """
     deployed_name = single_program.strip(".rs") 
     deployed_path = os.path.join(anchor_base_path, ".anchor_files",deployed_name)
     delete_rust_contract(deployed_path)
