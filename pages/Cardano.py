@@ -4,9 +4,13 @@ import binascii
 import subprocess
 from pathlib import Path
 import streamlit as st
-from Cardano_module.cardano_module.cardano_utils import cardano_base_path
+try:
+    from modules.Cardano_module.cardano_module.cardano_utils import cardano_base_path
+except ImportError:
+    from Cardano_module.cardano_module.cardano_utils import cardano_base_path
 
-CONTRACTS_DIR = Path.cwd() / "uploads" / "plutus"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+CONTRACTS_DIR = ROOT_DIR / "modules" / "Cardano_module" / "uploads" / "plutus"
 CONTRACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 TRACES_DIR = Path(cardano_base_path).expanduser().resolve() / "execution_traces"

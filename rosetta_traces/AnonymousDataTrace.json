@@ -1,0 +1,63 @@
+{
+  "trace_title": "AnonymousDataTrace",
+  "trace_actors": [
+    "alice",
+    "bob"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "store_data",
+      "waiting_time": 0,
+      "actors": [
+        "alice"
+      ],
+      "args": {
+        "contract_instance": "c1",
+        "data": "0x1234",
+        "id": "keccak(pack((alice.address,1)))"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "alice",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "store_data",
+      "waiting_time": 0,
+      "actors": [
+        "bob"
+      ],
+      "args": {
+        "contract_instance": "c1",
+        "data": "0xabcd",
+        "id": "keccak(pack((bob.address,2)))"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "bob",
+        "send_transaction": true
+      }
+    }
+  ]
+}

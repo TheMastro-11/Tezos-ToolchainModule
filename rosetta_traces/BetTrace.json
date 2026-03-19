@@ -1,0 +1,184 @@
+{
+  "trace_title": "BetTrace",
+  "trace_actors": [
+    "player1",
+    "player2",
+    "player3",
+    "oracle",
+    "outsider"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "join",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "contract_instance": "bet_player1",
+        "_amount": "mutez(500)",
+        "_level": 1
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player2",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "win",
+      "waiting_time": 0,
+      "actors": [
+        "oracle"
+      ],
+      "args": {
+        "contract_instance": "bet_player1",
+        "winner": "player1",
+        "_level": 1
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "oracle",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "join",
+      "waiting_time": 2,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "contract_instance": "bet_player2",
+        "_amount": "mutez(500)",
+        "_level": 3
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player2",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "win",
+      "waiting_time": 0,
+      "actors": [
+        "oracle"
+      ],
+      "args": {
+        "contract_instance": "bet_player2",
+        "winner": "player2",
+        "_level": 3
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "oracle",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "5",
+      "function_name": "join",
+      "waiting_time": 7,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "contract_instance": "timeout_no_join",
+        "_amount": "mutez(500)",
+        "_level": 10
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player2",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "6",
+      "function_name": "timeout",
+      "waiting_time": 4,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "contract_instance": "timeout_no_join",
+        "_level": 14
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player1",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "7",
+      "function_name": "join",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "contract_instance": "timeout_with_join",
+        "_amount": "mutez(500)",
+        "_level": 4
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player2",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "8",
+      "function_name": "timeout",
+      "waiting_time": 21,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "contract_instance": "timeout_with_join",
+        "_level": 25
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player2",
+        "send_transaction": true
+      }
+    }
+  ]
+}

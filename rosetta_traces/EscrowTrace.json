@@ -1,0 +1,98 @@
+{
+  "trace_title": "EscrowTrace",
+  "trace_actors": [
+    "seller",
+    "buyer",
+    "outsider"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "deposit",
+      "waiting_time": 0,
+      "actors": [
+        "buyer"
+      ],
+      "args": {
+        "contract_instance": "escrow_pay",
+        "_amount": "mutez(1000)"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "buyer",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "pay",
+      "waiting_time": 0,
+      "actors": [
+        "buyer"
+      ],
+      "args": {
+        "contract_instance": "escrow_pay"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "buyer",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "deposit",
+      "waiting_time": 0,
+      "actors": [
+        "buyer"
+      ],
+      "args": {
+        "contract_instance": "escrow_refund",
+        "_amount": "mutez(1000)"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "buyer",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "refund",
+      "waiting_time": 0,
+      "actors": [
+        "seller"
+      ],
+      "args": {
+        "contract_instance": "escrow_refund"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "seller",
+        "send_transaction": true
+      }
+    }
+  ]
+}

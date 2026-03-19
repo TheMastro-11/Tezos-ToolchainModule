@@ -1,0 +1,101 @@
+{
+  "trace_title": "PaymentSplitterTrace",
+  "trace_actors": [
+    "admin",
+    "mario",
+    "luca",
+    "outsider"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "receive",
+      "waiting_time": 0,
+      "actors": [
+        "outsider"
+      ],
+      "args": {
+        "contract_instance": "payment_splitter",
+        "_amount": "mutez(10)"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "outsider",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "release",
+      "waiting_time": 0,
+      "actors": [
+        "admin"
+      ],
+      "args": {
+        "contract_instance": "payment_splitter",
+        "payee": "admin"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "admin",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "release",
+      "waiting_time": 0,
+      "actors": [
+        "mario"
+      ],
+      "args": {
+        "contract_instance": "payment_splitter",
+        "payee": "mario"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "mario",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "release",
+      "waiting_time": 0,
+      "actors": [
+        "luca"
+      ],
+      "args": {
+        "contract_instance": "payment_splitter",
+        "payee": "luca"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "luca",
+        "send_transaction": true
+      }
+    }
+  ]
+}

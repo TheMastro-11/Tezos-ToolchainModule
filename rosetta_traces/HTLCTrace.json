@@ -1,0 +1,43 @@
+{
+  "trace_title": "HTLCTrace",
+  "trace_actors": [
+    "owner",
+    "verifier",
+    "outsider"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "reveal",
+      "waiting_time": 0,
+      "actors": [
+        "owner"
+      ],
+      "args": {
+        "contract_instance": "funded_htlc",
+        "secret": "Test"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "owner",
+        "send_transaction": true
+      }
+    }
+  ]
+}

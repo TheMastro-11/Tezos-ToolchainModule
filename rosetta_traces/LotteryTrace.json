@@ -1,0 +1,64 @@
+{
+  "trace_title": "LotteryTrace",
+  "trace_actors": [
+    "owner",
+    "player0",
+    "player1"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "join0",
+      "waiting_time": 0,
+      "actors": [
+        "player0"
+      ],
+      "args": {
+        "contract_instance": "lottery",
+        "hash0": "keccak(pack(\"alpha\"))",
+        "_amount": "mutez(1000000)",
+        "_level": 1
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player0",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "redeem0_nojoin1",
+      "waiting_time": 1000,
+      "actors": [
+        "player0"
+      ],
+      "args": {
+        "contract_instance": "lottery",
+        "_level": 1001
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "player0",
+        "send_transaction": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "trace_title": "VaultTrace",
+  "trace_actors": [
+    "owner",
+    "recovery",
+    "receiver",
+    "outsider"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "False"
+    },
+    "tezos": {
+      "use": "False"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "receive",
+      "waiting_time": 0,
+      "actors": [
+        "outsider"
+      ],
+      "args": {
+        "contract_instance": "vault",
+        "_amount": "mutez(5000000)"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "outsider",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "withdraw",
+      "waiting_time": 7,
+      "actors": [
+        "owner"
+      ],
+      "args": {
+        "contract_instance": "vault",
+        "amount": "nat(1000000)",
+        "receiver": "receiver",
+        "_level": 7
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "owner",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "cancel",
+      "waiting_time": 0,
+      "actors": [
+        "recovery"
+      ],
+      "args": {
+        "contract_instance": "vault"
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "recovery",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "withdraw",
+      "waiting_time": 13,
+      "actors": [
+        "owner"
+      ],
+      "args": {
+        "contract_instance": "vault",
+        "amount": "nat(2500000)",
+        "receiver": "receiver",
+        "_level": 20
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "owner",
+        "send_transaction": true
+      }
+    },
+    {
+      "sequence_id": "5",
+      "function_name": "finalize",
+      "waiting_time": 10,
+      "actors": [
+        "owner"
+      ],
+      "args": {
+        "contract_instance": "vault",
+        "_level": 30
+      },
+      "tezos": {},
+      "cardano": {},
+      "evm": {},
+      "solana": {
+        "provider_wallet": "owner",
+        "send_transaction": true
+      }
+    }
+  ]
+}
