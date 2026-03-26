@@ -1,0 +1,317 @@
+[
+  {
+    "prim": "storage",
+    "args": [
+      {
+        "prim": "pair",
+        "args": [
+          { "prim": "big_map", "args": [ { "prim": "address" }, { "prim": "mutez" } ], "annots": [ "%bids" ] },
+          {
+            "prim": "pair",
+            "args": [
+              { "prim": "option", "args": [ { "prim": "timestamp" } ], "annots": [ "%end_time" ] },
+              {
+                "prim": "pair",
+                "args": [
+                  { "prim": "mutez", "annots": [ "%highest_bid" ] },
+                  {
+                    "prim": "pair",
+                    "args": [
+                      { "prim": "option", "args": [ { "prim": "address" } ], "annots": [ "%highest_bidder" ] },
+                      {
+                        "prim": "pair",
+                        "args": [
+                          { "prim": "string", "annots": [ "%object" ] },
+                          {
+                            "prim": "pair",
+                            "args": [
+                              { "prim": "address", "annots": [ "%seller" ] },
+                              {
+                                "prim": "or",
+                                "args": [
+                                  { "prim": "unit", "annots": [ "%CLOSED" ] },
+                                  { "prim": "or", "args": [ { "prim": "unit", "annots": [ "%WAIT_CLOSING" ] }, { "prim": "unit", "annots": [ "%WAIT_START" ] } ] }
+                                ],
+                                "annots": [ "%state" ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "prim": "parameter",
+    "args": [
+      {
+        "prim": "or",
+        "args": [
+          { "prim": "or", "args": [ { "prim": "unit", "annots": [ "%bid" ] }, { "prim": "unit", "annots": [ "%end" ] } ] },
+          { "prim": "or", "args": [ { "prim": "int", "annots": [ "%start" ] }, { "prim": "unit", "annots": [ "%withdraw" ] } ] }
+        ]
+      }
+    ]
+  },
+  {
+    "prim": "code",
+    "args": [
+      [
+        { "prim": "UNPAIR" },
+        {
+          "prim": "IF_LEFT",
+          "args": [
+            [
+              {
+                "prim": "IF_LEFT",
+                "args": [
+                  [
+                    { "prim": "DROP" },
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Right", "args": [ { "prim": "Left", "args": [ { "prim": "Unit" } ] } ] }
+                      ]
+                    },
+                    { "prim": "DUP", "args": [ { "int": "2" } ] },
+                    { "prim": "GET", "args": [ { "int": "12" } ] },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    {
+                      "prim": "IF",
+                      "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Auction not started or already closed" } ] }, { "prim": "FAILWITH" } ] ]
+                    },
+                    { "prim": "DUP" },
+                    { "prim": "GET", "args": [ { "int": "3" } ] },
+                    { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "30" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                    { "prim": "NOW" },
+                    { "prim": "COMPARE" },
+                    { "prim": "LT" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Bidding time expired" } ] }, { "prim": "FAILWITH" } ] ] },
+                    { "prim": "DUP" },
+                    { "prim": "GET", "args": [ { "int": "5" } ] },
+                    { "prim": "AMOUNT" },
+                    { "prim": "COMPARE" },
+                    { "prim": "GT" },
+                    {
+                      "prim": "IF",
+                      "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "value must be greater than highest" } ] }, { "prim": "FAILWITH" } ] ]
+                    },
+                    { "prim": "DUP" },
+                    { "prim": "GET", "args": [ { "int": "7" } ] },
+                    {
+                      "prim": "IF_NONE",
+                      "args": [
+                        [],
+                        [
+                          { "prim": "DROP" },
+                          { "prim": "DUP" },
+                          { "prim": "DUP" },
+                          { "prim": "CAR" },
+                          { "prim": "DUP", "args": [ { "int": "3" } ] },
+                          { "prim": "GET", "args": [ { "int": "5" } ] },
+                          { "prim": "SOME" },
+                          { "prim": "DIG", "args": [ { "int": "3" } ] },
+                          { "prim": "GET", "args": [ { "int": "7" } ] },
+                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "35" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                          { "prim": "UPDATE" },
+                          { "prim": "UPDATE", "args": [ { "int": "1" } ] }
+                        ]
+                      ]
+                    },
+                    { "prim": "DUP" },
+                    { "prim": "CAR" },
+                    { "prim": "SENDER" },
+                    { "prim": "MEM" },
+                    {
+                      "prim": "IF",
+                      "args": [
+                        [
+                          { "prim": "PUSH", "args": [ { "prim": "mutez" }, { "int": "0" } ] },
+                          { "prim": "DUP", "args": [ { "int": "2" } ] },
+                          { "prim": "CAR" },
+                          { "prim": "SENDER" },
+                          { "prim": "GET" },
+                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "37" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                          { "prim": "COMPARE" },
+                          { "prim": "NEQ" }
+                        ],
+                        [ { "prim": "PUSH", "args": [ { "prim": "bool" }, { "prim": "False" } ] } ]
+                      ]
+                    },
+                    {
+                      "prim": "IF",
+                      "args": [
+                        [
+                          { "prim": "NIL", "args": [ { "prim": "operation" } ] },
+                          { "prim": "SELF", "annots": [ "%withdraw" ] },
+                          { "prim": "PUSH", "args": [ { "prim": "mutez" }, { "int": "0" } ] },
+                          { "prim": "UNIT" },
+                          { "prim": "TRANSFER_TOKENS" },
+                          { "prim": "CONS" }
+                        ],
+                        [ { "prim": "NIL", "args": [ { "prim": "operation" } ] } ]
+                      ]
+                    },
+                    { "prim": "SWAP" },
+                    { "prim": "SENDER" },
+                    { "prim": "SOME" },
+                    { "prim": "UPDATE", "args": [ { "int": "7" } ] },
+                    { "prim": "AMOUNT" },
+                    { "prim": "UPDATE", "args": [ { "int": "5" } ] },
+                    { "prim": "SWAP" }
+                  ],
+                  [
+                    { "prim": "DROP" },
+                    { "prim": "DUP" },
+                    { "prim": "GET", "args": [ { "int": "11" } ] },
+                    { "prim": "SENDER" },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Only the seller" } ] }, { "prim": "FAILWITH" } ] ] },
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Right", "args": [ { "prim": "Left", "args": [ { "prim": "Unit" } ] } ] }
+                      ]
+                    },
+                    { "prim": "DUP", "args": [ { "int": "2" } ] },
+                    { "prim": "GET", "args": [ { "int": "12" } ] },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Auction not started" } ] }, { "prim": "FAILWITH" } ] ] },
+                    { "prim": "DUP" },
+                    { "prim": "GET", "args": [ { "int": "3" } ] },
+                    { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "55" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                    { "prim": "NOW" },
+                    { "prim": "COMPARE" },
+                    { "prim": "GE" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Auction not ended" } ] }, { "prim": "FAILWITH" } ] ] },
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Left", "args": [ { "prim": "Unit" } ] }
+                      ]
+                    },
+                    { "prim": "UPDATE", "args": [ { "int": "12" } ] },
+                    { "prim": "NIL", "args": [ { "prim": "operation" } ] },
+                    { "prim": "DUP", "args": [ { "int": "2" } ] },
+                    { "prim": "GET", "args": [ { "int": "11" } ] },
+                    { "prim": "CONTRACT", "args": [ { "prim": "unit" } ] },
+                    { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "57" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                    { "prim": "DUP", "args": [ { "int": "3" } ] },
+                    { "prim": "GET", "args": [ { "int": "5" } ] },
+                    { "prim": "UNIT" },
+                    { "prim": "TRANSFER_TOKENS" },
+                    { "prim": "CONS" }
+                  ]
+                ]
+              }
+            ],
+            [
+              {
+                "prim": "IF_LEFT",
+                "args": [
+                  [
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Right", "args": [ { "prim": "Right", "args": [ { "prim": "Unit" } ] } ] }
+                      ]
+                    },
+                    { "prim": "DUP", "args": [ { "int": "3" } ] },
+                    { "prim": "GET", "args": [ { "int": "12" } ] },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Auction already started" } ] }, { "prim": "FAILWITH" } ] ] },
+                    { "prim": "DUP", "args": [ { "int": "2" } ] },
+                    { "prim": "GET", "args": [ { "int": "11" } ] },
+                    { "prim": "SENDER" },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Only the seller" } ] }, { "prim": "FAILWITH" } ] ] },
+                    { "prim": "SWAP" },
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Right", "args": [ { "prim": "Left", "args": [ { "prim": "Unit" } ] } ] }
+                      ]
+                    },
+                    { "prim": "UPDATE", "args": [ { "int": "12" } ] },
+                    { "prim": "SWAP" },
+                    { "prim": "NOW" },
+                    { "prim": "ADD" },
+                    { "prim": "SOME" },
+                    { "prim": "UPDATE", "args": [ { "int": "3" } ] },
+                    { "prim": "NIL", "args": [ { "prim": "operation" } ] }
+                  ],
+                  [
+                    { "prim": "DROP" },
+                    {
+                      "prim": "PUSH",
+                      "args": [
+                        { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "or", "args": [ { "prim": "unit" }, { "prim": "unit" } ] } ] },
+                        { "prim": "Right", "args": [ { "prim": "Left", "args": [ { "prim": "Unit" } ] } ] }
+                      ]
+                    },
+                    { "prim": "DUP", "args": [ { "int": "2" } ] },
+                    { "prim": "GET", "args": [ { "int": "12" } ] },
+                    { "prim": "COMPARE" },
+                    { "prim": "EQ" },
+                    { "prim": "IF", "args": [ [], [ { "prim": "PUSH", "args": [ { "prim": "string" }, { "string": "Auction not started" } ] }, { "prim": "FAILWITH" } ] ] },
+                    { "prim": "DUP" },
+                    { "prim": "CAR" },
+                    { "prim": "SENDER" },
+                    { "prim": "MEM" },
+                    {
+                      "prim": "IF",
+                      "args": [
+                        [
+                          { "prim": "DUP" },
+                          { "prim": "CAR" },
+                          { "prim": "SENDER" },
+                          { "prim": "GET" },
+                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "47" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                          { "prim": "SWAP" },
+                          { "prim": "DUP" },
+                          { "prim": "CAR" },
+                          { "prim": "PUSH", "args": [ { "prim": "option", "args": [ { "prim": "mutez" } ] }, { "prim": "Some", "args": [ { "int": "0" } ] } ] },
+                          { "prim": "SENDER" },
+                          { "prim": "UPDATE" },
+                          { "prim": "UPDATE", "args": [ { "int": "1" } ] },
+                          { "prim": "SWAP" },
+                          { "prim": "NIL", "args": [ { "prim": "operation" } ] },
+                          { "prim": "SENDER" },
+                          { "prim": "CONTRACT", "args": [ { "prim": "unit" } ] },
+                          { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "49" } ] }, { "prim": "FAILWITH" } ], [] ] },
+                          { "prim": "DIG", "args": [ { "int": "2" } ] },
+                          { "prim": "UNIT" },
+                          { "prim": "TRANSFER_TOKENS" },
+                          { "prim": "CONS" }
+                        ],
+                        [ { "prim": "NIL", "args": [ { "prim": "operation" } ] } ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        { "prim": "PAIR" }
+      ]
+    ]
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "trace_title": "HTLC__timeout",
+  "trace_actors": [
+    "admin"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "timeout",
+      "waiting_time": 30,
+      "actors": [
+        "admin"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+
+  ]
+}

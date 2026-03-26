@@ -1,0 +1,118 @@
+{
+  "trace_title": "Vault",
+  "trace_actors": [
+    "player1",
+    "player2"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "receive",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {},
+      "value": 0.0001,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "withdraw",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "receiver": {
+          "address_of" : "player2"
+        },
+        "amount": 10
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "cancel",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "withdraw",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "receiver": {
+          "address_of" : "player2"
+        },
+        "amount": 10
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "5",
+      "function_name": "finalize",
+      "waiting_time": 30,
+      "actors": [
+        "player1"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

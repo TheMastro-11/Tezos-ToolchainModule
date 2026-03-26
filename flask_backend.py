@@ -125,51 +125,41 @@ def compile_deploy():
 @app.route("/automatic_data_insertion", methods=["POST"])
 def automatic_data_insertion():
     selected_trace_file = request.json.get("trace_file")
-    print(f"DEBUG: Received trace file request: {selected_trace_file}")
-    print(f"DEBUG: Full request JSON: {request.json}")
-    
+
     if not selected_trace_file:
-        print("DEBUG: No trace file specified in request")
         return jsonify({"success": False, "error": "No trace file specified"}), 400
-    
-    # Determina il tipo di blockchain basato sull'estensione del file
+
     if selected_trace_file.endswith('.json'):
-        # Solana traces (JSON)
-        traces_path = os.path.join(os.path.dirname(__file__), "Solana_module", "solana_module", "anchor_module", "execution_traces")
-        trace_file_path = os.path.join(traces_path, selected_trace_file)
-        
-        if not selected_trace_file or not os.path.isfile(trace_file_path):
-            print("Solana trace file not found:", trace_file_path)
-            return jsonify({"success": False, "error": "Solana trace file not found"}), 400
-        
-        try:
-            result = asyncio.run(trace_manager.run_execution_trace(selected_trace_file))
-            return jsonify({"success": True, "result": result})
-        except Exception as e:
-            import traceback
-            print("Errore Solana automatic_data_insertion:", traceback.format_exc())
-            return jsonify({"success": False, "error": str(e)}), 500
-    
-    elif selected_trace_file.endswith('.csv'):
-        # Tezos traces (CSV)
-        traces_path = os.path.join(os.path.dirname(__file__), "Tezos_module", "toolchain", "execution_traces")
-        trace_file_path = os.path.join(traces_path, selected_trace_file)
-        
-        if not selected_trace_file or not os.path.isfile(trace_file_path):
-            print("Tezos trace file not found:", trace_file_path)
-            return jsonify({"success": False, "error": "Tezos trace file not found"}), 400
-        
-        try:
-            # Qui dovresti chiamare il gestore di tracce Tezos
-            # Per ora ritorniamo un messaggio di successo
-            return jsonify({"success": True, "result": "Tezos trace execution not yet implemented"})
-        except Exception as e:
-            import traceback
-            print("Errore Tezos automatic_data_insertion:", traceback.format_exc())
-            return jsonify({"success": False, "error": str(e)}), 500
-    
+        # Distingui Solana traces da Tezos traces in base al path/contenuto
+        tezos_trace_path = os.path.join(
+            os.path.dirname(__file__), "Tezos_module", "toolchain", "rosetta_traces", selected_trace_file
+        )
+        solana_trace_path = os.path.join(
+            os.path.dirname(__file__), "Solana_module", "solana_module", "anchor_module", "execution_traces", selected_trace_file
+        )
+
+        if os.path.isfile(tezos_trace_path):
+            # Tezos JSON trace
+            try:
+                from tezos_module.tezos_interface import run_tezos_trace
+                result = run_tezos_trace(selected_trace_file)
+                return jsonify(result)
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e)}), 500
+
+        elif os.path.isfile(solana_trace_path):
+            # Solana JSON trace (logica esistente)
+            try:
+                result = asyncio.run(trace_manager.run_execution_trace(selected_trace_file))
+                return jsonify({"success": True, "result": result})
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e)}), 500
+
+        else:
+            return jsonify({"success": False, "error": f"Trace file not found: {selected_trace_file}"}), 404
+
     else:
-        return jsonify({"success": False, "error": "Unsupported trace file format. Use .json for Solana or .csv for Tezos"}), 400
+        return jsonify({"success": False, "error": "Unsupported trace format"}), 400
 
 # ==============================
 # ROUTE Interactive Data Insertion

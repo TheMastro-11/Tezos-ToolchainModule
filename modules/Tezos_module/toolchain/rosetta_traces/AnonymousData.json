@@ -1,0 +1,63 @@
+{
+  "trace_title": "AnonymousData",
+  "trace_actors": [
+    "alice",
+    "bob"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "ethereum": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "store_data",
+      "waiting_time": 0,
+      "actors": [
+        "alice"
+      ],
+      "args": {
+        "data": "0x1234",
+        "id": "0x4321"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "store_data",
+      "waiting_time": 0,
+      "actors": [
+        "bob"
+      ],
+      "args": {
+        "data": "0xabcd",
+        "id": "0x4333"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

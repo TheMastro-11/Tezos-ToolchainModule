@@ -1,0 +1,34 @@
+{
+  "prim": "Pair",
+  "args": [
+    [],
+    {
+      "prim": "Pair",
+      "args": [
+        { "prim": "None" },
+        {
+          "prim": "Pair",
+          "args": [
+            { "int": "5" },
+            {
+              "prim": "Pair",
+              "args": [
+                { "prim": "None" },
+                {
+                  "prim": "Pair",
+                  "args": [
+                    { "string": "reason" },
+                    {
+                      "prim": "Pair",
+                      "args": [ { "string": "tz1SL2xBdmLSD2W3Hs84SfH912xDpYtAjsaa" }, { "prim": "Right", "args": [ { "prim": "Right", "args": [ { "prim": "Unit" } ] } ] } ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

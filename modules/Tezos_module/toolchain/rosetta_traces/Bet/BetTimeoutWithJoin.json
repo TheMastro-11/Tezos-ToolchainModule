@@ -1,0 +1,58 @@
+{
+  "trace_title": "Bet__timeout_with_join",
+  "trace_actors": [
+    "player1",
+    "player2",
+    "oracle"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "join",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {},
+      "value": 0.0005,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "timeout",
+      "waiting_time": 50,
+      "actors": [
+        "player2"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

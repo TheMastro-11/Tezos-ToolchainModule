@@ -1,0 +1,101 @@
+{
+  "trace_title": "SimpleWallet",
+  "trace_actors": [
+    "player1"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "deposit",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {},
+      "value": 0.001,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "createTransaction",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "to": {
+          "address_of" : "player2"
+        },
+        "value": 2,
+        "data": "0x1234"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "executeTransaction",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "tx_id": 0
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {
+          "provider_wallet": "owner",
+          "send_transaction": true
+        }
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "withdraw",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

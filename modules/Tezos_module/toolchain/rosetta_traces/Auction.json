@@ -1,0 +1,93 @@
+{
+  "trace_title": "Auction",
+  "trace_actors": [
+    "player1",
+    "player2"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "ethereum": {
+      "network": "localhost"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "start",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "duration": 30
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs" : {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "bid",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {},
+      "value": 2.0,
+      "valid": true,
+      "platform_specs" : {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "withdraw",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs" : {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "4",
+      "function_name": "end",
+      "waiting_time": 50,
+      "actors": [
+        "player1"
+      ],
+      "args": {},
+      "value": 0.0,
+      "valid": true,
+      "platform_specs" : {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

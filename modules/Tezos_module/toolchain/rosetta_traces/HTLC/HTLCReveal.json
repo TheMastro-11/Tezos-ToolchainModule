@@ -1,0 +1,41 @@
+{
+  "trace_title": "HTLC__reveal",
+  "trace_actors": [
+    "admin"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "reveal",
+      "waiting_time": 0,
+      "actors": [
+        "admin"
+      ],
+      "args": {
+        "s": "Test"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}

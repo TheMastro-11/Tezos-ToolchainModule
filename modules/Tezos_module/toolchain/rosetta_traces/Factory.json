@@ -1,0 +1,80 @@
+{
+  "trace_title": "Factory",
+  "trace_actors": [
+    "player1",
+    "player2"
+  ],
+  "configuration": {
+    "solana": {
+      "use": "True"
+    },
+    "evm": {
+      "use": "True"
+    },
+    "tezos": {
+      "use": "True"
+    },
+    "cardano": {
+      "use": "False"
+    }
+  },
+  "trace_execution": [
+    {
+      "sequence_id": "1",
+      "function_name": "createProduct",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "tag": "alice-first"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "createProduct",
+      "waiting_time": 0,
+      "actors": [
+        "player1"
+      ],
+      "args": {
+        "tag": "alice-second"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    },
+    {
+      "sequence_id": "3",
+      "function_name": "createProduct",
+      "waiting_time": 0,
+      "actors": [
+        "player2"
+      ],
+      "args": {
+        "tag": "bob-only"
+      },
+      "value": 0.0,
+      "valid": true,
+      "platform_specs": {
+        "tezos": {},
+        "cardano": {},
+        "ethereum": {},
+        "solana": {}
+      }
+    }
+  ]
+}
