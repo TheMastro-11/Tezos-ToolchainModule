@@ -6,9 +6,5 @@ _toolchain_dir = str(Path(__file__).resolve().parent.parent / "modules" / "Tezos
 if _toolchain_dir not in sys.path:
     sys.path.insert(0, _toolchain_dir)
 
-_original_cwd = os.getcwd()
-os.chdir(_toolchain_dir)
-try:
-    exec(open(os.path.join(_toolchain_dir, "dapp.py")).read())
-finally:
-    os.chdir(_original_cwd)
+_dapp_path = os.path.join(_toolchain_dir, "dapp.py")
+exec(open(_dapp_path).read(), {**globals(), "__file__": _dapp_path})

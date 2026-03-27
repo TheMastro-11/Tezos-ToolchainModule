@@ -1,0 +1,1 @@
+sp.record(deadline = 19080905, oracle = sp.address('tz1ZNfCeehri4t8oFNB187DDEAqtdu3Ayc1z'), player1 = sp.address('tz1SL2xBdmLSD2W3Hs84SfH912xDpYtAjsaa'), player2 = None, wager = sp.mutez(500))

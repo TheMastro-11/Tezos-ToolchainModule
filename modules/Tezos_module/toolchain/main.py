@@ -45,17 +45,7 @@ def getScenariosRoot() -> Path:
 
 
 def getTraceRoot() -> Path:
-    toolchain_root = getToolchainRoot()
-    candidates = [
-        toolchain_root / "rosetta_traces",
-        toolchain_root / "execution_traces"
-    ]
-
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-
-    return candidates[0]
+    return (getToolchainRoot().parent.parent.parent / "rosetta_traces").resolve()
 
 
 def parseContractId(contractId):

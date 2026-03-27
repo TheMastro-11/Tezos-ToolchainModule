@@ -7,17 +7,17 @@
       "chain_fee": 1500
     },
     "player2": {
-      "total_cost": 8194,
+      "total_cost": 694,
       "miner_fee": 694,
-      "chain_fee": 7500
+      "chain_fee": 0
     }
   },
   "total_sequence_execution_costs": {
-    "total_cost": 10673,
+    "total_cost": 3173,
     "miner_fee": 1673,
-    "chain_fee": 9000,
+    "chain_fee": 1500,
     "weight": 402,
-    "average_block_delay": 7.0
+    "average_block_delay": 7.25
   },
   "trace_execution_costs": {
     "1": {
@@ -27,18 +27,18 @@
       "miner_fee": 449,
       "chain_fee": 1500,
       "weight": 100,
-      "hash": "opLXrc9pfGTZqBBYy2EzNoHpVrtbmfxcM7xWcph9WqN6Tvygjev",
-      "block_delay": 7
+      "hash": "op1JxJzuYxBGaRS7CviyVUNEDM4qHSJMbzKDnyDL4B12o131Wg3",
+      "block_delay": 5
     },
     "2": {
       "function_name": "bid",
       "actor": "player2",
-      "total_cost": 7846,
+      "total_cost": 346,
       "miner_fee": 346,
-      "chain_fee": 7500,
+      "chain_fee": 0,
       "weight": 101,
-      "hash": "ontT167j98y2N4XwCZLNfjpfy68vm2CPu65QGjaDedq6BZGXSmg",
-      "block_delay": 7
+      "hash": "op475L9CijsMpAF3uGxKySU4iXzFKamRLZdMahKiG1ao5gybXZ6",
+      "block_delay": 8
     },
     "3": {
       "function_name": "withdraw",
@@ -47,8 +47,8 @@
       "miner_fee": 348,
       "chain_fee": 0,
       "weight": 103,
-      "hash": "oo3NPPmLSpK5vUpA17fnCCuBcGnW5tUfFHfJ719po6xqiKpmH7T",
-      "block_delay": 7
+      "hash": "oozUkfKaTLrY4id5yY2xoBfrikTaDp2L4kmRNFEBjbps3zotaB4",
+      "block_delay": 8
     },
     "4": {
       "function_name": "end",
@@ -57,8 +57,8 @@
       "miner_fee": 530,
       "chain_fee": 0,
       "weight": 98,
-      "hash": "ooXumhCsKRhVqm2tp8iNCuPAXPZDQqhgMJsYmrbEzu7p7Kcfm9p",
-      "block_delay": 7
+      "hash": "onvTcw4XFc7xNJW9nMoCZxiAnjTes4Fdy4yX56CKgJ4sqdY5J5o",
+      "block_delay": 8
     }
   }
 }

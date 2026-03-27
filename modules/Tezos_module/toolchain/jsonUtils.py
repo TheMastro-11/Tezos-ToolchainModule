@@ -185,19 +185,7 @@ def jsonWriter(fileName, opReport):
 
 
 def getTraceRoot():
-    toolchain_root = Path(__file__).resolve().parent
-    candidates = [
-        toolchain_root / "rosetta_traces",
-        toolchain_root / "execution_traces",
-        Path("rosetta_traces"),
-        Path("execution_traces")
-    ]
-
-    for candidate in candidates:
-        if candidate.exists() and candidate.is_dir():
-            return candidate
-
-    return candidates[0]
+    return Path(__file__).resolve().parent.parent.parent.parent / "rosetta_traces"
 
 
 def jsonReader(traceRoot=None):
