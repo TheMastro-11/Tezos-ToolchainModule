@@ -1,0 +1,59 @@
+{
+  "trace_title": "Template1",
+  "trace_actors_costs": [ 
+    {
+        "player1" : {
+            "value": 0.0,
+            "weight": 123,
+            "miner_fee" : 1234,
+            "chain_fee" : 1234,
+            "total_cost" : 1234,
+            "block_delay" : 123
+        }
+    },
+    {
+        "player2" : {
+            "value": 0.0,
+            "weight": 123,
+            "miner_fee" : 1234,
+            "chain_fee" : 1234,
+            "total_cost" : 1234,
+            "block_delay" : 123
+        }
+    }
+  ],
+  "total_sequence_execution_costs" : {
+        "success": true,
+        "value": 0.0,
+        "weight": 123,
+        "miner_fee" : 1234,
+        "chain_fee" : 1234,
+        "total_cost" : 1234,
+        "block_delay" : 123,
+        "average_block_delay" : 123
+    },
+  "trace_execution_costs": [
+    {
+      "sequence_id": "1",
+      "function_name": "function1",
+      "success": true,
+      "value": 0.0,
+      "weight": 123,
+      "miner_fee" : 1234,
+      "chain_fee" : 1234,
+      "total_cost" : 1234,
+      "block_delay" : 123
+    },
+    {
+      "sequence_id": "2",
+      "function_name": "function2",
+      "success": true,
+      "value": 0.0,
+      "weight": 123,
+      "miner_fee" : 1234,
+      "chain_fee" : 1234,
+      "total_cost" : 1234,
+      "block_delay" : 123
+    }
+  ]
+}

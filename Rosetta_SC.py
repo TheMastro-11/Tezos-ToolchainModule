@@ -1,15 +1,18 @@
-from Solana_module.solana_module.anchor_module.dapp_automatic_insertion_manager import  fetch_initialized_programs , build_table
-from Rosetta_utils import upload_trace_file
-from flask import Flask, request, jsonify
-import streamlit as st
-import pandas as pd
 import os
 import sys
 import requests
 import json
 import asyncio
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), "Solana_module"))
+
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(_base_dir)
+sys.path.append(os.path.join(_base_dir, "modules"))
+sys.path.append(os.path.join(_base_dir, "modules", "Solana_module"))
+
+from Solana_module.solana_module.anchor_module.dapp_automatic_insertion_manager import  fetch_initialized_programs , build_table
+from Rosetta_utils import upload_trace_file
+import streamlit as st
+import pandas as pd
 
 # ==============================
 # Import moduli Solana

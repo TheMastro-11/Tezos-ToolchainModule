@@ -1,10 +1,16 @@
-import streamlit as st
-import pandas as pd
-import json
-from io import StringIO
 import os
+import sys
 import re
 import asyncio
+import json
+from io import StringIO
+
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(_base_dir, "modules"))
+sys.path.append(os.path.join(_base_dir, "modules", "Solana_module"))
+
+import streamlit as st
+import pandas as pd
 from solders.pubkey import Pubkey
 from anchorpy import Wallet, Provider
 
@@ -58,7 +64,12 @@ def upload_trace_file():
                     json.dump(json_data, f, indent=2)
 
             if "tezos" in config_list :
-                print("add tezos path")
+                traces_folder = os.path.join(_base_dir, "modules", "Tezos_module", "tezos_module", "execution_traces")
+                os.makedirs(traces_folder, exist_ok=True)
+                file_path = os.path.join(traces_folder, uploaded_file.name)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=2)
+
             if "cardano" in config_list :
                 # Save to execution_traces folder
                 traces_folder = f"{cardano_base_path}/execution_traces/"
@@ -70,7 +81,11 @@ def upload_trace_file():
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(json_data, f, indent=2)
             if "evm" in config_list :
-                print("add evm path")
+                traces_folder = os.path.join(_base_dir, "modules", "Ethereum_module", "hardhat_module", "execution_traces")
+                os.makedirs(traces_folder, exist_ok=True)
+                file_path = os.path.join(traces_folder, uploaded_file.name)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=2)
                
             st.info(f" Saved to: `execution_traces/{uploaded_file.name}`")
             st.success(f" Trace file `{uploaded_file.name}` uploaded successfully , you can find and choose the list of toolchains below:")

@@ -5,8 +5,9 @@ import requests
 import json
 import asyncio
 
-solana_path = os.path.join(os.path.dirname(__file__), "..", "Solana_module")
-sys.path.append(solana_path)
+modules_path = os.path.join(os.path.dirname(__file__), "..", "modules")
+sys.path.append(modules_path)
+sys.path.append(os.path.join(modules_path, "Solana_module"))
 # ==============================
 # Import Solana modules
 # ==============================

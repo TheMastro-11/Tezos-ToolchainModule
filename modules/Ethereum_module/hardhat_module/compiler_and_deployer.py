@@ -17,7 +17,7 @@ from Ethereum_module.ethereum_utils import (
     wait_for_transaction_receipt
 )
 from Ethereum_module.streamlit_constructor_interface import automatic_constructor_collector ,  _get_constructor_parameters_from_abi
-hardhat_base_path = os.path.join("Ethereum_module", "hardhat_module")
+hardhat_base_path = os.path.dirname(os.path.abspath(__file__))
 contracts_path = os.path.join(hardhat_base_path, "contracts")
 
 

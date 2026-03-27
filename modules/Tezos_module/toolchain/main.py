@@ -20,7 +20,7 @@ from contractUtils import (
 )
 from folderScan import folderScan, contractSuites, scenarioScan
 from csvUtils import csvReader, csvWriter
-from jsonUtils import getAddress, addressUpdate, jsonWriter, jsonReader, resolveAddress, normalizeTraceTitle, extractContractIdFromTraceTitle, updateDeploymentLevel, getDeploymentLevel, normalizeContractName
+from jsonUtils import getAddress, addressUpdate, jsonWriter, jsonReader, resolveAddress, normalizeTraceTitle, extractContractIdFromTraceTitle, updateDeploymentLevel, getDeploymentLevel, normalizeContractName, outputTraceWriter
 
 
 def getToolchainRoot() -> Path:
@@ -476,9 +476,17 @@ def normalizeJsonTrace(traceData):
         args = step.get("args", {})
         tezos_data = getTezosStepConfig(step)
 
+        provider_wallet = tezos_data.get("provider_wallet")
+        if provider_wallet:
+            actor_label = normalizeWalletLabel(provider_wallet)
+        else:
+            actors = step.get("actors", [])
+            actor_label = normalizeWalletLabel(actors[0]) if actors else "unknown"
+
         normalizedRows[step["sequence_id"]] = {
             "entrypoint": step["function_name"],
             "wallet": resolveStepWallet(step, walletMap),
+            "actor": actor_label,
             "contractId": traceContractId,
             "parameters": buildStepParameters(traceContractId, step["function_name"], args),
             "tezAmount": parseAmountToTez(step.get("value", tezos_data.get("value", tezos_data.get("_amount", args.get("_amount"))))),
@@ -523,6 +531,8 @@ def executionSetupJson(contractId, traceData):
                 waitingTime=waitingTime
             )
 
+        send_level = lastConfirmedBlockLevel
+
         opResult = entrypointCall(
             client=client,
             contractAddress=contractAddress,
@@ -533,11 +543,14 @@ def executionSetupJson(contractId, traceData):
         infoResult = callInfoResult(opResult=opResult)
         infoResult["contract"] = currentContractId
         infoResult["entryPoint"] = entrypointSel
+        infoResult["actor"] = row["actor"]
 
         if "confirmed_level" in opResult:
             lastConfirmedBlockLevel = opResult["confirmed_level"]
         else:
             lastConfirmedBlockLevel = getCurrentBlockLevel(client)
+
+        infoResult["block_delay"] = lastConfirmedBlockLevel - send_level
 
         infoResultDict[element] = infoResult
 
@@ -741,6 +754,11 @@ def exportResult(opResult):
     print("\nJSON Updated!\n\n")
 
 
+def exportTraceResult(traceData, resultsDict, traceName):
+    outputPath = outputTraceWriter(traceData=traceData, resultsDict=resultsDict, traceName=traceName)
+    print(f"\nTrace output saved: {outputPath}\n")
+
+
 def main():
     print("Hi, welcome to the Tezos-Contract toolchain!\n")
     print("Here you can compile, deploy, interact with, or test any contract from the archive.\n")
@@ -817,8 +835,7 @@ def main():
                 traceExecutionTraces = jsonReader(traceRoot=getTraceRoot())
                 for traceName, traceData in traceExecutionTraces.items():
                     results = executionSetupJson(contractId=traceName, traceData=traceData)
-                    for result in results:
-                        exportResult(results[result])
+                    exportTraceResult(traceData=traceData, resultsDict=results, traceName=traceName)
 
             main()
 

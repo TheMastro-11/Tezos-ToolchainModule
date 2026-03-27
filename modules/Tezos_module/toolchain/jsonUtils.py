@@ -85,6 +85,81 @@ def resolveAddress(addressValid, contractId):
     raise KeyError(f"Address not found for '{contractId}'")
 
 
+def getOutputTracesRoot():
+    return Path(__file__).resolve().parent / "output_traces"
+
+
+def outputTraceWriter(traceData, resultsDict, traceName):
+    contractName = extractContractIdFromTraceTitle(traceData.get("trace_title", traceName))
+
+    outputRoot = getOutputTracesRoot()
+    if traceName != contractName:
+        outputPath = outputRoot / contractName / f"{traceName}.json"
+    else:
+        outputPath = outputRoot / f"{contractName}.json"
+
+    outputPath.parent.mkdir(parents=True, exist_ok=True)
+
+    trace_actors_costs = {}
+    total_cost = 0
+    total_miner_fee = 0
+    total_chain_fee = 0
+    total_weight = 0
+    trace_execution_costs = {}
+    block_delays = []
+
+    for seq_id, result in resultsDict.items():
+        baker_fee = result.get("BakerFee", 0)
+        chain_fee = result.get("Storage", 0)
+        cost = result.get("TotalCost", baker_fee + chain_fee)
+        weight = result.get("Weight", 0)
+        actor = result.get("actor", "unknown")
+        block_delay = result.get("block_delay", 0)
+        block_delays.append(block_delay)
+
+        trace_execution_costs[str(seq_id)] = {
+            "function_name": result.get("entryPoint", ""),
+            "actor": actor,
+            "total_cost": cost,
+            "miner_fee": baker_fee,
+            "chain_fee": chain_fee,
+            "weight": weight,
+            "hash": result.get("Hash", ""),
+            "block_delay": block_delay
+        }
+
+        if actor not in trace_actors_costs:
+            trace_actors_costs[actor] = {"total_cost": 0, "miner_fee": 0, "chain_fee": 0}
+        trace_actors_costs[actor]["total_cost"] += cost
+        trace_actors_costs[actor]["miner_fee"] += baker_fee
+        trace_actors_costs[actor]["chain_fee"] += chain_fee
+
+        total_cost += cost
+        total_miner_fee += baker_fee
+        total_chain_fee += chain_fee
+        total_weight += weight
+
+    average_block_delay = sum(block_delays) / len(block_delays) if block_delays else 0
+
+    output = {
+        "trace_title": traceData.get("trace_title", traceName),
+        "trace_actors_costs": trace_actors_costs,
+        "total_sequence_execution_costs": {
+            "total_cost": total_cost,
+            "miner_fee": total_miner_fee,
+            "chain_fee": total_chain_fee,
+            "weight": total_weight,
+            "average_block_delay": average_block_delay
+        },
+        "trace_execution_costs": trace_execution_costs
+    }
+
+    with open(outputPath, 'w', encoding='utf-8') as file:
+        json.dump(output, file, indent=2)
+
+    return outputPath
+
+
 def jsonWriter(fileName, opReport):
     transactionsValid = {}
 

@@ -8,6 +8,7 @@ import pandas as pd
 
 root_path = os.path.join(os.path.dirname(__file__), "..")
 sys.path.append(root_path)
+sys.path.append(os.path.join(root_path, "modules"))
 
 # ==============================
 # Import Ethereum modules
@@ -89,9 +90,9 @@ selected_action = st.sidebar.radio(
     ("Info", "Manage Wallets", "Upload new contract", "Compile & Deploy", "Interactive data insertion", "Execution Traces")
 )
 
-WALLETS_PATH = os.path.join(root_path, "Ethereum_module", "ethereum_wallets")
-CONTRACTS_PATH = os.path.join(root_path, "Ethereum_module", "hardhat_module", "contracts")
-DEPLOYMENTS_PATH = os.path.join(root_path, "Ethereum_module", "hardhat_module", "deployments")
+WALLETS_PATH = os.path.join(root_path, "modules", "Ethereum_module", "ethereum_wallets")
+CONTRACTS_PATH = os.path.join(root_path, "modules", "Ethereum_module", "hardhat_module", "contracts")
+DEPLOYMENTS_PATH = os.path.join(root_path, "modules", "Ethereum_module", "hardhat_module", "deployments")
 
 # ==============================
 # Main section
@@ -433,7 +434,7 @@ elif selected_action == "Interactive data insertion":
                                         addr_data = {"name": param['name'], "method": method}
                                         
                                         if method == "Wallet Address":
-                                            wallet_files = [f for f in os.listdir("Ethereum_module/ethereum_wallets") if f.endswith('.json')]
+                                            wallet_files = [f for f in os.listdir(WALLETS_PATH) if f.endswith('.json')]
                                             addr_data['wallet'] = st.selectbox(
                                                 f"Wallet for {param['name']}",
                                                 ["--"] + wallet_files,

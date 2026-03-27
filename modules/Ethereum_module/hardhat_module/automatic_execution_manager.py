@@ -173,7 +173,7 @@ def exec_contract_automatically(contract_deployment_id):
 
 
                     # Load wallet for this step
-                    wallet_path = os.path.join("Ethereum_module", "ethereum_wallets", actual_wallet_file)
+                    wallet_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ethereum_wallets", actual_wallet_file)
                     wallet_data = load_wallet_from_file(wallet_path)
                     if not wallet_data:
                         st.error(f"❌ Could not load wallet: {actual_wallet_file}")

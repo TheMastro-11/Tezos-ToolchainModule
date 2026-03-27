@@ -1,1 +1,18 @@
-{}
+{
+    "AnonymousData": "KT18cm5H3yRjQKDePZVCQB79ezHmumemuH6f",
+    "Auction": "KT19UnHCiZ6WR7E8UNzUXUKBdA8Vh4AyQMDc",
+    "Bet": "KT1C4JYXBSCjcZii8PQoEXJQJWbeSsAsUJRE",
+    "Crowdfund": "KT1WMd9z3brj3Rf5tAMjFQuBBN2vhWDEfpFP",
+    "Escrow": "KT1GiZCqXaSKiK1PyPWzAwTwVDVymppR9fj5",
+    "PriceBet_Oracle": "KT1G15Eid5MEY64YzD84d6fEFSKqeAxtYR2r",
+    "PriceBet_PriceBet": "KT1AT5Mbe7ExzGtzUm8qHGwJ1pL2UgzxM9eG",
+    "Factory": "KT19hQesHpyyyYRcvpyay5vRmirQ4KH2xsVr",
+    "HTLC": "KT1AJRNLZAfdv71urWE7vCeXwPvDrFNSNLsM",
+    "PaymentSplitter": "KT1JGG58oEFMJzMhNtxYTj8oTVVKbY7T6iQ6",
+    "SimpleTransfer": "KT1GCDxLytyeUgRNu4Qx7qu1BwzZWh59MjKM",
+    "SimpleWallet": "KT1GLpPyZ7bG6tvi3PiajqTqURcZpqW7yJpK",
+    "Storage": "KT1H3tBDjFHRVADacDsW7sz9xJXTXZ6h2KrY",
+    "Vault": "KT1PSPWPEhy3nkVBZo1Rwo3okmJSYFs8HZgf",
+    "Vesting": "KT1N4aGpKor73dJUX3LS4usdmzqXwA2gnkkh",
+    "Lottery": "KT1RXxCWyiVrxJtL3cNchCYdiLWXah7E7A25"
+}

@@ -35,6 +35,7 @@ from main import (
     compileAndDeployForTrace,
     normalizeContractToken,
     exportResult,
+    exportTraceResult,
     executionSetupCsv,
     executionSetupJson,
 )
@@ -511,8 +512,7 @@ def render_trace_execution(trace_name, trace_data, contract_name, render_live=Fa
             render_live=render_live,
             output_placeholder=output_placeholder
         )
-        for _, result in results.items():
-            exportResult(result)
+        exportTraceResult(traceData=trace_data, resultsDict=results, traceName=trace_name)
         return results, terminal_output
 
 
@@ -676,7 +676,12 @@ def trace_view(client):
             selected_trace_suite = None
             if execute_deploy:
                 preview_trace_data = next(iter(contract_traces.values()))
-                available_trace_contracts = resolveTraceContractCandidates(selectedContract=selected_contract, traceData=preview_trace_data)
+                try:
+                    available_trace_contracts = resolveTraceContractCandidates(selectedContract=selected_contract, traceData=preview_trace_data)
+                except FileNotFoundError as e:
+                    st.warning(f"⚠️ Cannot deploy: no contract source found for **{selected_contract}**. {e}")
+                    execute_deploy = False
+                    available_trace_contracts = {}
                 suite_options = [s for s in ["Legacy", "Rosetta"] if s in available_trace_contracts]
                 if suite_options:
                     # Restore suite selection from last setup

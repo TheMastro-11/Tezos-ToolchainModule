@@ -9,7 +9,8 @@
       "use": "True"
     },
     "ethereum": {
-      "network": "localhost"
+      "network": "localhost",
+      "use" : "True"
     },
     "tezos": {
       "use": "True"
@@ -75,7 +76,7 @@
     {
       "sequence_id": "4",
       "function_name": "end",
-      "waiting_time": 50,
+      "waiting_time": 30,
       "actors": [
         "player1"
       ],

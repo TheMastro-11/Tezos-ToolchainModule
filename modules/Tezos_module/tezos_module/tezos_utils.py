@@ -25,11 +25,29 @@ except ImportError as e:
     TEZOS_AVAILABLE = False
 
 
+def _get_addresses():
+    """Helper: reads addressList.json with correct CWD."""
+    original_dir = os.getcwd()
+    try:
+        os.chdir(toolchain_path)
+        return getAddress()
+    finally:
+        os.chdir(original_dir)
+
+def _update_address(contract_name, address):
+    """Helper: updates addressList.json with correct CWD."""
+    original_dir = os.getcwd()
+    try:
+        os.chdir(toolchain_path)
+        addressUpdate(contract_name, address)
+    finally:
+        os.chdir(original_dir)
+
 def get_available_contracts():
     """Wrapper per folderScan - ottiene lista contratti disponibili."""
     if not TEZOS_AVAILABLE:
         return []
-    
+
     try:
         # Usa la funzione esistente con il path corretto
         contracts = folderScan(contracts_path)
@@ -109,7 +127,7 @@ def deploy_tezos_contract(contract_name, initial_balance=0):
         if op_result and hasattr(op_result, 'hash'):
             # Salva indirizzo usando funzione esistente
             contract_address = op_result.contents[0]['metadata']['operation_result']['originated_contracts'][0]
-            addressUpdate(contract_name, contract_address)
+            _update_address(contract_name, contract_address)
             
             return {
                 "success": True,
@@ -128,10 +146,9 @@ def get_deployed_contracts():
     """Wrapper per getAddress - ottiene lista contratti deployati."""
     if not TEZOS_AVAILABLE:
         return []
-    
+
     try:
-        # Usa la funzione esistente senza modificarla
-        addresses = getAddress()
+        addresses = _get_addresses()
         return list(addresses.keys()) if addresses else []
     except Exception as e:
         print(f"Error getting deployed contracts: {e}")
@@ -142,9 +159,9 @@ def get_contract_entrypoints(contract_name):
     """Ottiene gli entrypoints di un contratto deployato."""
     if not TEZOS_AVAILABLE:
         return []
-    
+
     try:
-        addresses = getAddress()
+        addresses = _get_addresses()
         if contract_name not in addresses:
             return []
         
@@ -170,9 +187,9 @@ def call_contract_entrypoint(contract_name, entrypoint_name, parameters=None, te
     """Wrapper per entrypointCall - chiama un entrypoint del contratto."""
     if not TEZOS_AVAILABLE:
         return {"success": False, "error": "Tezos modules not available"}
-    
+
     try:
-        addresses = getAddress()
+        addresses = _get_addresses()
         if contract_name not in addresses:
             return {"success": False, "error": f"Contract {contract_name} not deployed"}
         

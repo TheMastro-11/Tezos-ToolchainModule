@@ -8,8 +8,9 @@ import uuid
 import streamlit as st
 from datetime import datetime, timedelta
 import requests
-sys.path.append(os.path.join(os.path.dirname(__file__), "Solana_module"))
-sys.path.append(os.path.join(os.path.dirname(__file__), "Tezos_module"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "modules", "Solana_module"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "modules", "Tezos_module"))
 
 # Solana imports
 import solana_module.anchor_module.dapp_automatic_insertion_manager as trace_manager
@@ -52,6 +53,8 @@ try:
         fetch_tezos_entrypoints,
         fetch_tezos_contract_context,
         interact_with_tezos_contract,
+        execute_tezos_trace,
+        get_tezos_json_traces,
         is_tezos_available
     )
     TEZOS_ENABLED = True
@@ -59,20 +62,8 @@ except ImportError as e:
     print(f"Tezos modules not available: {e}")
     TEZOS_ENABLED = False
 
-# Cardano imports
-try:
-    from tezos_module.tezos_interface import (
-        compile_and_deploy_tezos_contracts,
-        fetch_tezos_contracts,
-        fetch_tezos_entrypoints,
-        fetch_tezos_contract_context,
-        interact_with_tezos_contract,
-        is_tezos_available
-    )
-    CARDANO_ENABLED = True
-except ImportError as e:
-    print(f"Cardano modules not available: {e}")
-    CARDANO_ENABLED = False
+# Cardano imports - module not yet fully implemented
+CARDANO_ENABLED = False
 
 app = Flask(__name__)
 
@@ -125,41 +116,51 @@ def compile_deploy():
 @app.route("/automatic_data_insertion", methods=["POST"])
 def automatic_data_insertion():
     selected_trace_file = request.json.get("trace_file")
-
+    print(f"DEBUG: Received trace file request: {selected_trace_file}")
+    print(f"DEBUG: Full request JSON: {request.json}")
+    
     if not selected_trace_file:
+        print("DEBUG: No trace file specified in request")
         return jsonify({"success": False, "error": "No trace file specified"}), 400
-
+    
+    # Determina il tipo di blockchain basato sull'estensione del file
     if selected_trace_file.endswith('.json'):
-        # Distingui Solana traces da Tezos traces in base al path/contenuto
-        tezos_trace_path = os.path.join(
-            os.path.dirname(__file__), "Tezos_module", "toolchain", "rosetta_traces", selected_trace_file
-        )
-        solana_trace_path = os.path.join(
-            os.path.dirname(__file__), "Solana_module", "solana_module", "anchor_module", "execution_traces", selected_trace_file
-        )
-
-        if os.path.isfile(tezos_trace_path):
-            # Tezos JSON trace
-            try:
-                from tezos_module.tezos_interface import run_tezos_trace
-                result = run_tezos_trace(selected_trace_file)
-                return jsonify(result)
-            except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
-
-        elif os.path.isfile(solana_trace_path):
-            # Solana JSON trace (logica esistente)
-            try:
-                result = asyncio.run(trace_manager.run_execution_trace(selected_trace_file))
-                return jsonify({"success": True, "result": result})
-            except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
-
-        else:
-            return jsonify({"success": False, "error": f"Trace file not found: {selected_trace_file}"}), 404
-
+        # Solana traces (JSON)
+        traces_path = os.path.join(os.path.dirname(__file__), "Solana_module", "solana_module", "anchor_module", "execution_traces")
+        trace_file_path = os.path.join(traces_path, selected_trace_file)
+        
+        if not selected_trace_file or not os.path.isfile(trace_file_path):
+            print("Solana trace file not found:", trace_file_path)
+            return jsonify({"success": False, "error": "Solana trace file not found"}), 400
+        
+        try:
+            result = asyncio.run(trace_manager.run_execution_trace(selected_trace_file))
+            return jsonify({"success": True, "result": result})
+        except Exception as e:
+            import traceback
+            print("Errore Solana automatic_data_insertion:", traceback.format_exc())
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    elif selected_trace_file.endswith('.csv'):
+        # Tezos traces (CSV)
+        traces_path = os.path.join(os.path.dirname(__file__), "Tezos_module", "toolchain", "execution_traces")
+        trace_file_path = os.path.join(traces_path, selected_trace_file)
+        
+        if not selected_trace_file or not os.path.isfile(trace_file_path):
+            print("Tezos trace file not found:", trace_file_path)
+            return jsonify({"success": False, "error": "Tezos trace file not found"}), 400
+        
+        try:
+            # Qui dovresti chiamare il gestore di tracce Tezos
+            # Per ora ritorniamo un messaggio di successo
+            return jsonify({"success": True, "result": "Tezos trace execution not yet implemented"})
+        except Exception as e:
+            import traceback
+            print("Errore Tezos automatic_data_insertion:", traceback.format_exc())
+            return jsonify({"success": False, "error": str(e)}), 500
+    
     else:
-        return jsonify({"success": False, "error": "Unsupported trace format"}), 400
+        return jsonify({"success": False, "error": "Unsupported trace file format. Use .json for Solana or .csv for Tezos"}), 400
 
 # ==============================
 # ROUTE Interactive Data Insertion
@@ -303,7 +304,7 @@ def close_program():
 # ETHEREUM ROUTES
 # ==============================
 
-ETH_WALLETS_PATH = os.path.join("Ethereum_module", "ethereum_wallets")
+ETH_WALLETS_PATH = os.path.join("modules", "Ethereum_module", "ethereum_wallets")
 
 # ==============================
 # ROUTE Wallet Balance Ethereum
@@ -662,6 +663,33 @@ def tezos_interact_contract():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": f"Internal error: {str(e)}"}), 500
+
+@app.route("/tezos_get_json_traces", methods=["GET"])
+def tezos_get_json_traces():
+    """Get list of available Tezos JSON execution traces."""
+    if not TEZOS_ENABLED:
+        return jsonify({"error": "Tezos modules not available"}), 500
+    try:
+        traces = get_tezos_json_traces()
+        return jsonify({"success": True, "traces": traces})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/tezos_automatic_execution", methods=["POST"])
+def tezos_automatic_execution():
+    """Execute a Rosetta JSON trace on Tezos."""
+    if not TEZOS_ENABLED:
+        return jsonify({"error": "Tezos modules not available"}), 500
+    trace_file = request.json.get("trace_file")
+    if not trace_file:
+        return jsonify({"success": False, "error": "No trace file specified"}), 400
+    try:
+        result = execute_tezos_trace(trace_file)
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ==============================
 # CARDANO ROUTES

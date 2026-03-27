@@ -10,7 +10,7 @@ from Ethereum_module.ethereum_utils import (
 )
 from Ethereum_module.hardhat_module.meta_transaction import metaTransaction
 
-hardhat_base_path = os.path.join("Ethereum_module", "hardhat_module")
+hardhat_base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 def fetch_deployed_contracts():

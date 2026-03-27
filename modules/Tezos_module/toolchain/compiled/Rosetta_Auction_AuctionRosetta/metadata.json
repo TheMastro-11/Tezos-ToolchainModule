@@ -1,6 +1,6 @@
 {
   "contract_id": "Rosetta/Auction:AuctionRosetta",
   "contract_name": "Rosetta_Auction_AuctionRosetta",
-  "source": "/Users/mastro/Documents/GitHub/tezos-contract-2.0/contracts/Rosetta/Auction/AuctionRosetta.py",
-  "output_dir": "/Users/mastro/Documents/GitHub/tezos-contract-2.0/toolchain/compiled/Rosetta_Auction_AuctionRosetta"
+  "source": "/Users/mastro/Documents/GitHub/Tezos-ToolchainModule/modules/Tezos_module/contracts/Rosetta/Auction/AuctionRosetta.py",
+  "output_dir": "/Users/mastro/Documents/GitHub/Tezos-ToolchainModule/modules/Tezos_module/toolchain/compiled/Rosetta_Auction_AuctionRosetta"
 }

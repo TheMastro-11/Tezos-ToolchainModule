@@ -1,0 +1,14 @@
+{
+    "PriceBet_Oracle": 19030192,
+    "PriceBet_PriceBet": 19030200,
+    "Auction": 19080737,
+    "Factory": 19030774,
+    "HTLC": 19031279,
+    "PaymentSplitter": 19036661,
+    "SimpleTransfer": 19031808,
+    "SimpleWallet": 19036997,
+    "Storage": 19032173,
+    "Vault": 19054184,
+    "Vesting": 19059642,
+    "Lottery": 19060122
+}
