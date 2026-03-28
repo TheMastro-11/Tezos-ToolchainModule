@@ -8,7 +8,7 @@
     "solana": {
       "use": "True"
     },
-    "ethereum": {
+    "evm": {
       "use" : "True"
     },
     "tezos": {
@@ -34,7 +34,7 @@
       "platform_specs" : {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     },
@@ -53,7 +53,7 @@
       "platform_specs" : {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     }

@@ -3,7 +3,9 @@ import sys
 import re
 import asyncio
 import json
+import threading
 from io import StringIO
+from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
 _base_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(_base_dir, "modules"))
@@ -12,6 +14,10 @@ sys.path.append(os.path.join(_base_dir, "modules", "Solana_module"))
 _toolchain_dir = os.path.join(_base_dir, "modules", "Tezos_module", "toolchain")
 if _toolchain_dir not in sys.path:
     sys.path.insert(0, _toolchain_dir)
+
+_eth_modules_dir = os.path.join(_base_dir, "modules")
+if _eth_modules_dir not in sys.path:
+    sys.path.insert(0, _eth_modules_dir)
 
 import streamlit as st
 import pandas as pd
@@ -31,10 +37,88 @@ from trace_utils import (
     update_live_trace_progress,
     run_trace_with_report,
     summarize_trace_payload,
+    queue_trace_view,
 )
 
 from Cardano_module.cardano_module.cardano_utils import cardano_base_path
 from Solana_module.solana_module.anchor_module.anchor_utils import anchor_base_path
+
+try:
+    from Ethereum_module.hardhat_module.automatic_execution_manager import exec_contract_automatically
+    _evm_available = True
+except ImportError:
+    _evm_available = False
+
+
+def render_evm_trace_results():
+    """Render EVM execution results stored in session state."""
+    evm_results = st.session_state.get("evm_trace_results", [])
+    if not evm_results:
+        return
+
+    hcol1, hcol2 = st.columns([5, 1])
+    with hcol1:
+        st.subheader("⚡ Ethereum (EVM) Execution Report")
+    with hcol2:
+        if st.button("🗑️ Clear EVM", use_container_width=True):
+            st.session_state.pop("evm_trace_results", None)
+            st.rerun()
+
+    for entry in evm_results:
+        trace_name = entry.get("trace_name", "Trace")
+        result = entry.get("result", {})
+        success = result.get("success", False)
+        network = result.get("network", "unknown")
+        steps = result.get("results", [])
+        global_error = result.get("error")
+
+        status_icon = "✅" if success else "❌"
+        with st.container(border=True):
+            tcol1, tcol2 = st.columns([4, 2])
+            with tcol1:
+                st.markdown(f"**{status_icon} {trace_name}**")
+            with tcol2:
+                st.caption(f"Network: `{network}`")
+
+            if global_error:
+                with st.expander("Global error", expanded=True):
+                    st.code(global_error, language="text")
+
+            if steps:
+                # Metrics row
+                total = len(steps)
+                passed = sum(1 for s in steps if s.get("success", False))
+                failed = total - passed
+                total_gas = sum(s.get("gas_used", 0) or 0 for s in steps)
+                mc = st.columns(3)
+                mc[0].metric("Steps", total)
+                mc[1].metric("✅ Passed", passed)
+                mc[2].metric("❌ Failed", failed)
+
+                # Steps table
+                rows = []
+                for s in steps:
+                    rows.append({
+                        "Step": s.get("step", "-"),
+                        "Function": s.get("function_name", "-"),
+                        "Status": "✅ OK" if s.get("success", False) else "❌ Fail",
+                        "Tx Hash": (s.get("transaction_hash", "") or "")[:20] + "…"
+                                   if s.get("transaction_hash") else s.get("return_value", "-"),
+                        "Gas": s.get("gas_used", "-"),
+                        "Error": s.get("error", ""),
+                    })
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+
+                # Per-step detail in expanders
+                failed_steps = [s for s in steps if not s.get("success", False)]
+                if failed_steps:
+                    with st.expander(f"Failed step details ({len(failed_steps)})", expanded=True):
+                        for s in failed_steps:
+                            st.error(
+                                f"**Step {s.get('step')} — {s.get('function_name')}**: {s.get('error', 'unknown error')}"
+                            )
+            else:
+                st.info("No step results recorded.")
 
 
 def upload_trace_file():
@@ -128,11 +212,18 @@ def select_trace_file():
                          horizontal=True, key="trace_view_page")
     if view_mode == "Trace Report":
         render_trace_report()
+        render_evm_trace_results()
         return
 
     report = get_trace_report_state()
-    if report:
-        st.caption("A trace report is available in the dedicated view.")
+    evm_report = st.session_state.get("evm_trace_results")
+    if report or evm_report:
+        parts = []
+        if report:
+            parts.append("Tezos trace report")
+        if evm_report:
+            parts.append("EVM execution report")
+        st.caption(f"{' and '.join(parts)} available in the Trace Report view.")
 
     try:
         traces_by_contract = jsonReaderByContract(traceRoot=traces_root)
@@ -214,6 +305,7 @@ def select_trace_file():
         config_list[toolchain_options.index(lbl)] for lbl in selected_toolchain_labels
     ]
     tezos_selected = "tezos" in selected_toolchain_keys
+    evm_selected = "evm" in selected_toolchain_keys and _evm_available
 
     wallet_selection = "admin"
 
@@ -239,33 +331,32 @@ def select_trace_file():
                 key=f"rosetta_execute_deploy_{selected_contract}_{execution_mode}"
             )
 
-            if execute_deploy and tezos_selected:
-                preview_trace_data = next(iter(contract_traces.values()))
-                try:
-                    _orig = os.getcwd()
-                    os.chdir(_toolchain_dir)
+            any_executable_chain = tezos_selected or evm_selected
+
+            if execute_deploy and any_executable_chain:
+                # Contract suite selector — Tezos only
+                if tezos_selected:
+                    preview_trace_data = next(iter(contract_traces.values()))
                     try:
                         available_trace_contracts = resolveTraceContractCandidates(
                             selectedContract=selected_contract, traceData=preview_trace_data
                         )
-                    finally:
-                        os.chdir(_orig)
-                except FileNotFoundError as e:
-                    st.warning(f"⚠️ Cannot deploy: no contract source found for **{selected_contract}**. {e}")
-                    execute_deploy = False
-                    available_trace_contracts = {}
+                    except FileNotFoundError as e:
+                        st.warning(f"⚠️ Cannot deploy: no contract source found for **{selected_contract}**. {e}")
+                        execute_deploy = False
+                        available_trace_contracts = {}
 
-                suite_options = [s for s in ["Legacy", "Rosetta"] if s in available_trace_contracts]
-                if suite_options:
-                    default_suite_index = 0
-                    if (last_setup and last_setup.get("selected_contract") == selected_contract
-                            and last_setup.get("selected_trace_suite") in suite_options):
-                        default_suite_index = suite_options.index(last_setup["selected_trace_suite"])
-                    selected_trace_suite = st.radio(
-                        "Contract suite", options=suite_options, horizontal=True,
-                        index=default_suite_index,
-                        key=f"rosetta_contract_variant_{selected_contract}_{execution_mode}"
-                    )
+                    suite_options = [s for s in ["Legacy", "Rosetta"] if s in available_trace_contracts]
+                    if suite_options:
+                        default_suite_index = 0
+                        if (last_setup and last_setup.get("selected_contract") == selected_contract
+                                and last_setup.get("selected_trace_suite") in suite_options):
+                            default_suite_index = suite_options.index(last_setup["selected_trace_suite"])
+                        selected_trace_suite = st.radio(
+                            "Contract suite", options=suite_options, horizontal=True,
+                            index=default_suite_index,
+                            key=f"rosetta_contract_variant_{selected_contract}_{execution_mode}"
+                        )
 
                 default_compile = (last_setup.get("execute_compile", False)
                                    if last_setup and last_setup.get("selected_contract") == selected_contract
@@ -275,11 +366,18 @@ def select_trace_file():
                     key=f"rosetta_execute_compile_{selected_contract}_{execution_mode}"
                 )
 
+                # Initial balance label — unit depends on active chains
+                _balance_unit_map = {"tezos": "ꜩ", "evm": "ETH", "solana": "SOL", "cardano": "ADA"}
+                active_units = [_balance_unit_map[k] for k in selected_toolchain_keys if k in _balance_unit_map]
+                balance_label = (
+                    f"Initial balance ({' / '.join(active_units)})" if active_units else "Initial balance"
+                )
+
                 default_balance = (last_setup.get("initial_balance", 1)
                                    if last_setup and last_setup.get("selected_contract") == selected_contract
                                    else 1)
                 initial_balance = st.number_input(
-                    "Initial balance (ꜩ)", min_value=0, value=default_balance, step=1,
+                    balance_label, min_value=0, value=default_balance, step=1,
                     key=f"rosetta_initial_balance_{selected_contract}_{execution_mode}"
                 )
 
@@ -332,7 +430,12 @@ def select_trace_file():
     button_label = ("▶️ Execute selected trace" if execution_mode == "Single trace"
                     else "▶️ Execute all traces in contract")
 
-    if tezos_selected and st.button(button_label):
+    any_executable = tezos_selected or evm_selected
+    if not any_executable and selected_toolchain_keys:
+        st.info("ℹ️ Execution for the selected toolchain(s) is not yet integrated in Rosetta. "
+                "Use the dedicated toolchain page instead.")
+
+    if any_executable and st.button(button_label):
         save_trace_setup_config({
             "selected_contract": selected_contract, "execution_mode": execution_mode,
             "selected_trace": selected_trace, "execute_deploy": execute_deploy,
@@ -341,79 +444,166 @@ def select_trace_file():
             "show_live_terminal_output": show_live_terminal_output,
         })
 
-        _orig = os.getcwd()
-        os.chdir(_toolchain_dir)
-        try:
-            client = get_client(wallet_selection)
-        finally:
-            os.chdir(_orig)
+        # ── 1. Build chain list and column layout ──────────────────────────────────────────────
+        _chain_labels = {"tezos": "🔷 Tezos", "evm": "⚡ Ethereum (EVM)"}
+        chains_to_run = [k for k in ("tezos", "evm") if (tezos_selected if k == "tezos" else evm_selected)]
+        n = len(chains_to_run)
+        exec_cols = st.columns(n) if n > 1 else [st.container()]
+        col_map = {key: col for key, col in zip(chains_to_run, exec_cols)}
 
-        trace_report = {
-            "title": f"Trace report for {selected_trace if execution_mode == 'Single trace' else selected_contract}",
-            "status": "success",
-            "summary": {
-                "executed_traces": len(selected_trace_names), "execution_mode": execution_mode,
-                "execute_deploy": execute_deploy, "selected_suite": selected_trace_suite,
-            },
-            "traces": [],
-        }
-        status_box, progress_bar, results_placeholder, terminal_placeholders, metrics_placeholder = (
-            render_live_trace_progress(
-                title=trace_report["title"], total_traces=len(selected_trace_names),
-                show_terminal_output=show_live_terminal_output,
-            )
-        )
-        completed_rows = []
-        try:
-            for index, trace_name in enumerate(selected_trace_names):
-                compile_before_trace = execute_compile if index == 0 else execute_redeploy
+        # ── 2 & 3. Chain execution (parallel when both selected) ────────────────────────────────
+
+        ctx = get_script_run_ctx()
+
+        def _exec_tezos():
+            tezos_col = col_map["tezos"]
+
+            client = get_client(wallet_selection)
+
+            trace_title = f"Trace report for {selected_trace if execution_mode == 'Single trace' else selected_contract}"
+            trace_report = {
+                "title": trace_title,
+                "status": "success",
+                "summary": {
+                    "executed_traces": len(selected_trace_names), "execution_mode": execution_mode,
+                    "execute_deploy": execute_deploy, "selected_suite": selected_trace_suite,
+                },
+                "traces": [],
+            }
+
+            with tezos_col:
+                st.subheader(_chain_labels["tezos"])
+                (status_box, progress_bar, results_placeholder,
+                 terminal_placeholders, metrics_placeholder) = render_live_trace_progress(
+                    title=trace_title,
+                    total_traces=len(selected_trace_names),
+                    show_terminal_output=show_live_terminal_output,
+                )
+
+            completed_rows = []
+            try:
+                for index, trace_name in enumerate(selected_trace_names):
+                    compile_before_trace = execute_compile if index == 0 else execute_redeploy
+                    update_live_trace_progress(
+                        status_box=status_box, progress_bar=progress_bar,
+                        results_placeholder=results_placeholder, completed_items=completed_rows,
+                        total_traces=len(selected_trace_names), current_trace=trace_name,
+                        metrics_placeholder=metrics_placeholder,
+                    )
+                    with tezos_col:
+                        trace_entry = run_trace_with_report(
+                            client=client, selected_contract=selected_contract,
+                            trace_name=trace_name, trace_data=contract_traces[trace_name],
+                            execute_deploy=execute_deploy, execute_compile=execute_compile,
+                            initial_balance=initial_balance, preferred_suite=selected_trace_suite,
+                            compile_before_trace=compile_before_trace, deploy_before_trace=execute_deploy,
+                            show_live_terminal_output=show_live_terminal_output,
+                            phase_placeholders=terminal_placeholders,
+                        )
+
+                    trace_report["traces"].append(trace_entry)
+                    es = summarize_trace_payload(
+                        trace_entry.get("phases", {}).get("execute", {}).get("payload")
+                    )
+                    completed_rows.append({
+                        "Trace": trace_name, "Status": trace_entry.get("status", "success"),
+                        "Steps": es["steps"], "Total cost": es["total_cost"], "Gas": es["total_gas"],
+                    })
+                    update_live_trace_progress(
+                        status_box=status_box, progress_bar=progress_bar,
+                        results_placeholder=results_placeholder, completed_items=completed_rows,
+                        total_traces=len(selected_trace_names), metrics_placeholder=metrics_placeholder,
+                    )
+                save_trace_report(trace_report)
+            except Exception as e:
+                trace_report["status"] = "error"
+                trace_report["error"] = str(e)
+                save_trace_report(trace_report)
                 update_live_trace_progress(
                     status_box=status_box, progress_bar=progress_bar,
                     results_placeholder=results_placeholder, completed_items=completed_rows,
-                    total_traces=len(selected_trace_names), current_trace=trace_name,
+                    total_traces=len(selected_trace_names), has_error=True,
                     metrics_placeholder=metrics_placeholder,
                 )
-                _orig2 = os.getcwd()
-                os.chdir(_toolchain_dir)
-                try:
-                    trace_entry = run_trace_with_report(
-                        client=client, selected_contract=selected_contract,
-                        trace_name=trace_name, trace_data=contract_traces[trace_name],
-                        execute_deploy=execute_deploy, execute_compile=execute_compile,
-                        initial_balance=initial_balance, preferred_suite=selected_trace_suite,
-                        compile_before_trace=compile_before_trace, deploy_before_trace=execute_deploy,
-                        show_live_terminal_output=show_live_terminal_output,
-                        phase_placeholders=terminal_placeholders,
-                    )
-                finally:
-                    os.chdir(_orig2)
 
-                trace_report["traces"].append(trace_entry)
-                es = summarize_trace_payload(
-                    trace_entry.get("phases", {}).get("execute", {}).get("payload")
-                )
-                completed_rows.append({
-                    "Trace": trace_name, "Status": trace_entry.get("status", "success"),
-                    "Steps": es["steps"], "Total cost": es["total_cost"], "Gas": es["total_gas"],
+        def _exec_evm():
+            evm_col = col_map["evm"]
+            evm_collected = []
+
+            # Pre-filter EVM-enabled traces
+            evm_trace_list = [
+                t for t in selected_trace_names
+                if contract_traces[t].get("configuration", {}).get("evm", {}).get("use", "false").lower() == "true"
+            ]
+
+            with evm_col:
+                st.subheader(_chain_labels["evm"])
+                evm_progress = st.progress(0.0)
+                evm_caption = st.empty()
+
+            try:
+                for evm_idx, trace_name in enumerate(evm_trace_list):
+                    trace_data = contract_traces[trace_name]
+                    contract_deployment_id = trace_data.get("trace_title", selected_contract).lower()
+
+                    with evm_col:
+                        evm_caption.caption(
+                            f"⏳ Traccia corrente: `{trace_name}` ({evm_idx + 1}/{len(evm_trace_list)})"
+                        )
+                        deploy_phase_status = (
+                            st.status(f"🔄 Deploy — `{trace_name}`", expanded=True)
+                            if execute_deploy else None
+                        )
+                        execute_phase_status = st.status(
+                            f"▶️ Execute — `{trace_name}`", expanded=True
+                        )
+
+                    with evm_col:
+                        result = exec_contract_automatically(
+                            contract_deployment_id,
+                            trace_data=trace_data,
+                            execute_deploy=execute_deploy,
+                            execute_compile=execute_compile,
+                            initial_balance=initial_balance if execute_deploy else None,
+                            phase_statuses={"deploy": deploy_phase_status, "execute": execute_phase_status},
+                        )
+
+                    evm_collected.append({"trace_name": trace_name, "result": result or {}})
+                    with evm_col:
+                        evm_progress.progress((evm_idx + 1) / max(len(evm_trace_list), 1))
+                        if evm_idx + 1 == len(evm_trace_list):
+                            evm_caption.caption(
+                                f"✅ Completate {len(evm_trace_list)}/{len(evm_trace_list)} tracce"
+                            )
+
+            except Exception as e:
+                evm_collected.append({
+                    "trace_name": "unknown",
+                    "result": {"success": False, "error": str(e), "results": [], "network": "unknown"},
                 })
-                update_live_trace_progress(
-                    status_box=status_box, progress_bar=progress_bar,
-                    results_placeholder=results_placeholder, completed_items=completed_rows,
-                    total_traces=len(selected_trace_names), metrics_placeholder=metrics_placeholder,
-                )
-            save_trace_report(trace_report)
-            st.rerun()
-        except Exception as e:
-            trace_report["status"] = "error"
-            trace_report["error"] = str(e)
-            save_trace_report(trace_report)
-            update_live_trace_progress(
-                status_box=status_box, progress_bar=progress_bar,
-                results_placeholder=results_placeholder, completed_items=completed_rows,
-                total_traces=len(selected_trace_names), has_error=True,
-                metrics_placeholder=metrics_placeholder,
-            )
-            st.rerun()
+                with evm_col:
+                    st.error(f"❌ EVM execution error: {e}")
+
+            if evm_collected:
+                st.session_state["evm_trace_results"] = evm_collected
+                if not tezos_selected:
+                    queue_trace_view("Trace Report")
+
+        if tezos_selected and evm_selected:
+            t_tezos = threading.Thread(target=_exec_tezos, name="rosetta-tezos")
+            t_evm   = threading.Thread(target=_exec_evm,   name="rosetta-evm")
+            add_script_run_ctx(t_tezos, ctx)
+            add_script_run_ctx(t_evm,   ctx)
+            t_tezos.start()
+            t_evm.start()
+            t_tezos.join()
+            t_evm.join()
+        elif tezos_selected:
+            _exec_tezos()
+        elif evm_selected:
+            _exec_evm()
+
+        st.rerun()
 
 
 def showLinks(config_list):

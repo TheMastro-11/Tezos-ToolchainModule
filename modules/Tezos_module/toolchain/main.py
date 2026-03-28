@@ -23,8 +23,10 @@ from csvUtils import csvReader, csvWriter
 from jsonUtils import getAddress, addressUpdate, jsonWriter, jsonReader, resolveAddress, normalizeTraceTitle, extractContractIdFromTraceTitle, updateDeploymentLevel, getDeploymentLevel, normalizeContractName, outputTraceWriter
 
 
+_TOOLCHAIN_DIR = Path(__file__).resolve().parent
+
 def getToolchainRoot() -> Path:
-    return Path(__file__).resolve().parent
+    return _TOOLCHAIN_DIR
 
 
 def getContractsRoot() -> Path:
@@ -145,7 +147,7 @@ def executionSetupCsv(contractId, rows):
         if entrypointSel not in entrypoints:
             raise Exception("Entrypoint not found: " + entrypointSel)
 
-        with open("wallet.json", 'r', encoding='utf-8') as file:
+        with open(_TOOLCHAIN_DIR / "wallet.json", 'r', encoding='utf-8') as file:
             wallet = json.load(file)
         key = wallet[walletSel]
         client = pytezos.using(shell="ghostnet", key=key)
@@ -171,7 +173,7 @@ def normalizeWalletLabel(value):
 
 
 def readWallets():
-    with open("wallet.json", 'r', encoding='utf-8') as file:
+    with open(_TOOLCHAIN_DIR / "wallet.json", 'r', encoding='utf-8') as file:
         return json.load(file)
 
 
@@ -506,7 +508,7 @@ def executionSetupJson(contractId, traceData):
         if entrypointSel not in entrypoints:
             raise Exception("Entrypoint not found: " + entrypointSel)
 
-        with open("wallet.json", 'r', encoding='utf-8') as file:
+        with open(_TOOLCHAIN_DIR / "wallet.json", 'r', encoding='utf-8') as file:
             wallet = json.load(file)
         key = wallet[walletSel]
         client = pytezos.using(shell="ghostnet", key=key)
@@ -765,7 +767,7 @@ def main():
 
     if operationSel not in {4, 5}:
         walletSel = input("Which account do you want to use?\n")
-        with open("wallet.json", 'r', encoding='utf-8') as file:
+        with open(_TOOLCHAIN_DIR / "wallet.json", 'r', encoding='utf-8') as file:
             wallet = json.load(file)
 
         key = wallet[walletSel]

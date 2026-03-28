@@ -9,6 +9,7 @@
       "use": "True"
     },
     "evm": {
+      "network": "localhost",
       "use": "False"
     },
     "tezos": {
@@ -34,7 +35,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {
           "provider_wallet": "outsider",
           "send_transaction": true
@@ -56,7 +57,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {
           "provider_wallet": "admin",
           "send_transaction": true
@@ -78,7 +79,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {
           "provider_wallet": "outsider",
           "send_transaction": true

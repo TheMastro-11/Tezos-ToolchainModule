@@ -15,8 +15,11 @@ This application lets you easily manage your **Smart Contract toolchains**.
 
 ### Quick Start Guide:
 1. Use the **sidebar** on the left to select the toolchain you want to use:
-   - **Solana**, **Tezos**, **Ethereum (EVM)**, **Cardano** — accessible under **Single Toolchain**
-2. Each toolchain page provides actions like wallet management, compile & deploy, and data insertion.
+   - **Solana**, 
+   - **Tezos**, 
+   - **Ethereum (EVM)**, 
+   - **Cardano** — accessible under **Single Toolchain**
+2. Each toolchain page provides actions like wallet management, compile & deploy and data insertion.
 3. Use the tabs below to select or upload an **execution trace** and run it across one or more toolchains.
 """)
 

@@ -9,6 +9,7 @@
       "use": "True"
     },
     "evm": {
+      "network": "localhost",
       "use": "True"
     },
     "tezos": {
@@ -32,7 +33,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {
           "provider_wallet": "player2",
           "send_transaction": true
@@ -54,7 +55,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     }

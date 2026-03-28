@@ -8,7 +8,7 @@
     ],
   "configuration": {
     "solana": {"use": "True"},
-    "ethereum": {  "network": "localhost",
+    "evm": {  "network": "localhost",
       "use": "True",
       "deploy_config" : { 
                         "settings" : {
@@ -37,7 +37,7 @@
                  "amount" : 100},
       "tezos": {},
       "cardano": {},
-      "ethereum": {},
+      "evm": {},
       "solana": {
         "htlc_info": { "opt" : "s",
                           "param" :["owner","verifier" ]},
@@ -58,7 +58,7 @@
       "args": {"secret" : "ciao"},
       "tezos": {},
       "cardano": {},
-      "ethereum": { "sender_wallet": "owner",
+      "evm": { "sender_wallet": "owner",
         "gas_limit": "300000",
         "send_transaction": true},
       "solana": {
@@ -83,7 +83,7 @@
                  "amount" : 100},
       "tezos": {},
       "cardano": {},
-      "ethereum": {},
+      "evm": {},
       "solana": {
         "htlc_info": { "opt" : "s",
                           "param" :["owner","verifier" ]},
@@ -105,7 +105,7 @@
       "args": {},
       "tezos": {},
       "cardano": {},
-      "ethereum": {},
+      "evm": {},
       "solana": {
         "htlc_info": { "opt" : "s",
                           "param" :["owner","verifier" ]},

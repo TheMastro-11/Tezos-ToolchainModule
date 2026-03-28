@@ -9,6 +9,7 @@
       "use": "True"
     },
     "evm": {
+      "network": "localhost",
       "use": "True"
     },
     "tezos": {
@@ -34,7 +35,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     },
@@ -55,7 +56,7 @@
           "level": 2
         },
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     },
@@ -74,7 +75,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     },
@@ -91,7 +92,7 @@
       "platform_specs": {
         "tezos": {},
         "cardano": {},
-        "ethereum": {},
+        "evm": {},
         "solana": {}
       }
     }

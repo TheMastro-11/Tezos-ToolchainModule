@@ -19,9 +19,10 @@ except ImportError:
 except Exception as e:
     print(f"⚠️  Could not load .env file: {e}")
 
-# Base path now points to this package at repo root
-ethereum_base_path = os.path.join("Ethereum_module")
-hardhat_base_path = f"{ethereum_base_path}/hardhat_module"
+# Base path derived from this file's location (absolute, CWD-independent)
+_this_dir = os.path.dirname(os.path.abspath(__file__))  # .../modules/Ethereum_module
+ethereum_base_path = _this_dir
+hardhat_base_path = os.path.join(_this_dir, "hardhat_module")
 # Global default network - can be changed by set_default_network()
 DEFAULT_NETWORK = "localhost"
 
@@ -48,14 +49,17 @@ def read_json(file_path):
     else:
         return None
 
-def bind_actors(trace_name ):
+def bind_actors(trace_name, trace_data=None):
     #this function binds each actor with a wallet
-    with open(f"{hardhat_base_path}/execution_traces/{trace_name}.json", "r") as f:
-        data = json.load(f)
+    if trace_data is not None:
+        data = trace_data
+    else:
+        with open(f"{hardhat_base_path}/execution_traces/{trace_name}.json", "r") as f:
+            data = json.load(f)
 
     association = dict()
     trace_actors  = data["trace_actors"]
-    wallets_path = 'Ethereum_module/ethereum_wallets'
+    wallets_path = os.path.join(_this_dir, "ethereum_wallets")
     
     # Filter only .json wallet files
     all_files = os.listdir(wallets_path)
@@ -78,11 +82,14 @@ def bind_actors(trace_name ):
     print("All the actors have been associated")
     return association
 
-def build_complete_dict(trace_name ):
-    actors_dict = bind_actors(trace_name)
+def build_complete_dict(trace_name, trace_data=None):
+    actors_dict = bind_actors(trace_name, trace_data=trace_data)
 
-    with open(f"{hardhat_base_path}/execution_traces/{trace_name}.json", "r") as f:
-        data = json.load(f)
+    if trace_data is not None:
+        data = trace_data
+    else:
+        with open(f"{hardhat_base_path}/execution_traces/{trace_name}.json", "r") as f:
+            data = json.load(f)
 
     args = data["trace_execution"][0]["args"]
     
@@ -193,7 +200,7 @@ def create_web3_instance(network=None):
     }
     
     network_configs = {
-        "localhost": "http://127.0.0.1:8545",
+        "localhost": "http://127.0.0.1:8501",
         "sepolia": f"https://sepolia.infura.io/v3/{infura_project_id}" if infura_project_id else fallback_rpcs["sepolia"],
         "goerli": f"https://goerli.infura.io/v3/{infura_project_id}" if infura_project_id else fallback_rpcs["goerli"],
         "mainnet": f"https://mainnet.infura.io/v3/{infura_project_id}" if infura_project_id else fallback_rpcs["mainnet"]

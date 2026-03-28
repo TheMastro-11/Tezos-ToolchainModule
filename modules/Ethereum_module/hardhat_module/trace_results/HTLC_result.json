@@ -1,7 +1,7 @@
 {
   "network": "localhost",
   "success": true,
-  "platform": "Ethereum",
+  "platform": "evm",
   "trace_title": "HTLC_results",
   "results": [
     {

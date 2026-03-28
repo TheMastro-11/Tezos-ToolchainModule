@@ -2,6 +2,7 @@ import json
 import os
 import streamlit as st
 import time
+from contextlib import nullcontext
 
 from Ethereum_module.hardhat_module.contract_utils import (
     get_deployment_info,
@@ -40,25 +41,27 @@ def get_execution_traces():
 #def exec_contract_automatically(contract_deployment_id, 
 #                        ):
 
-def exec_contract_automatically(contract_deployment_id):
-    
-    # Use global default network if none specified
-    #address_inputs questi sono gli indirizzi da sostituire nei parametri di tipo address , da aggiungere 
-    address_inputs = []
-    
-    contract_file = contract_deployment_id + ".json"
-    json_file = read_json(f"{traces_path}/{contract_file}")
-    
-    if json_file is None:
-        st.error(f" Failed to read trace file: {contract_file}")
-        return
+def exec_contract_automatically(contract_deployment_id, trace_data=None,
+                                execute_deploy=True, execute_compile=True,
+                                initial_balance=None, phase_statuses=None):
 
-    
-    
+    # Use global default network if none specified
+    #address_inputs questi sono gli indirizzi da sostituire nei parametri di tipo address , da aggiungere
+    address_inputs = []
+
+    if trace_data is not None:
+        json_file = trace_data
+    else:
+        contract_file = contract_deployment_id + ".json"
+        json_file = read_json(f"{traces_path}/{contract_file}")
+        if json_file is None:
+            st.error(f" Failed to read trace file: {contract_file}")
+            return
+
     # Get network configuration
-    network = json_file["configuration"]["ethereum"]["network"]
+    network = json_file.get("configuration", {}).get("evm", {}).get("network", get_default_network())
     contract_name = json_file.get("trace_title", "") + ".sol"
-    actors_dict = bind_actors(contract_deployment_id)
+    actors_dict = bind_actors(contract_deployment_id, trace_data=json_file)
     if not actors_dict:
         st.error(" Failed to bind actors to wallets")
         return {
@@ -71,30 +74,46 @@ def exec_contract_automatically(contract_deployment_id):
     trace_executions = json_file.get("trace_execution", [])
 
     deploy_config = json_file.get("configuration", {}).get("ethereum", {}).get("deploy_config", {})
-    
-    
+
     # Store results for all function executions
     all_results = []
+
+    # Resolve phase status containers (may be None → nullcontext)
+    _deploy_ctx = (phase_statuses or {}).get("deploy")
+    _execute_ctx = (phase_statuses or {}).get("execute")
+
     #section for automatic deployment
     try:
-        if deploy_config:
-       
+        if execute_deploy and deploy_config:
 
             sender_wallet_name = deploy_config.get("settings", {}).get("sender_wallet", None)
             sender_wallet = actors_dict.get(sender_wallet_name, None)
 
-            
-            
-            value_in_ether = deploy_config.get("settings", {}).get("value_in_ether", 0)
+            # initial_balance overrides value_in_ether when explicitly provided
+            value_in_ether = (
+                initial_balance if initial_balance is not None
+                else deploy_config.get("settings", {}).get("value_in_ether", 0)
+            )
             constr_dict = actors_dict | deploy_config
-        
-            automatic_compile_and_deploy_contracts(sender_wallet, network, True, contract_name, constr_dict , value_in_ether)
 
+            with (_deploy_ctx if _deploy_ctx else nullcontext()):
+                automatic_compile_and_deploy_contracts(sender_wallet, network, True, contract_name, constr_dict, value_in_ether)
+            if _deploy_ctx:
+                _deploy_ctx.update(label="✅ Deploy completato", state="complete", expanded=False)
+
+        elif not execute_deploy:
+            if _deploy_ctx:
+                _deploy_ctx.update(label="⏭️ Deploy saltato", state="complete", expanded=False)
+            st.info("ℹ️ Deployment skipped (Deploy before execution is disabled).")
         else:
+            if _deploy_ctx:
+                _deploy_ctx.update(label="⏭️ Nessuna configurazione deploy", state="complete", expanded=False)
             st.info("ℹ No deployment configuration found, skipping deployment step.")
 
     except Exception as e:
-        st.info(f" Error automatically deploing the contract: {str(e)}")
+        if _deploy_ctx:
+            _deploy_ctx.update(label="❌ Deploy fallito", state="error", expanded=True)
+        st.info(f" Error automatically deploying the contract: {str(e)}")
 
     try:
         # Get deployment info (common for all functions)
@@ -115,172 +134,176 @@ def exec_contract_automatically(contract_deployment_id):
         
         
         # Execute each function in the trace
-        for i, execution_step in enumerate(trace_executions):
-            if execution_step.get("ethereum"):
-                st.info(f" Executing step {i+1}/{len(trace_executions)}: {execution_step['function_name']}")
-                if execution_step.get("waiting_time", 0) > 0:
-                    wait_time = execution_step.get("waiting_time", 0)
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+        with (_execute_ctx if _execute_ctx else nullcontext()):
+            for i, execution_step in enumerate(trace_executions):
+                if execution_step.get("ethereum"):
+                    st.info(f" Executing step {i+1}/{len(trace_executions)}: {execution_step['function_name']}")
+                    if execution_step.get("waiting_time", 0) > 0:
+                        wait_time = execution_step.get("waiting_time", 0)
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
 
-                    for j in range(wait_time):
-                        progress = (j + 1) / wait_time
-                        progress_bar.progress(progress)
-                        status_text.info(f"Waiting... {wait_time - j}s remaining")
-                        time.sleep(1)
+                        for j in range(wait_time):
+                            progress = (j + 1) / wait_time
+                            progress_bar.progress(progress)
+                            status_text.info(f"Waiting... {wait_time - j}s remaining")
+                            time.sleep(1)
 
-                    progress_bar.empty()
-                    status_text.empty()
-                try:
-                    # Get function name and parameters
-                    function_name = execution_step["function_name"]
-
-                    # Build step-specific complete_dict
-                    step_complete_dict = {}
-
-                    # Add args from execution step
-                    if "args" in execution_step:
-                        step_complete_dict.update(execution_step["args"])
-
-                    # Add ethereum config from execution step
-                    if "ethereum" in execution_step:
-                        ethereum_config = execution_step["ethereum"]
-                        step_complete_dict.update(ethereum_config)
-
-                    # Get sender wallet actor name for this step
-                    sender_wallet_actor = step_complete_dict.get("sender_wallet", None)
-                    if sender_wallet_actor is None:
-                        st.error(f"❌ sender_wallet not specified for step {i+1}")
-                        all_results.append({
-                            "step": i+1,
-                            "function_name": function_name,
-                            "success": False,
-                            "error": "sender_wallet not specified in execution step"
-                        })
-                        continue
-
-                    # Resolve actor name to actual wallet file
-                    actual_wallet_file = actors_dict.get(sender_wallet_actor, None)
-                    if actual_wallet_file is None:
-                        st.error(f"❌ Actor '{sender_wallet_actor}' not found in binding")
-                        all_results.append({
-                            "step": i+1,
-                            "function_name": function_name,
-                            "success": False,
-                            "error": f"Actor '{sender_wallet_actor}' not found in actor binding"
-                        })
-                        continue
-
-
-                    # Load wallet for this step
-                    wallet_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ethereum_wallets", actual_wallet_file)
-                    wallet_data = load_wallet_from_file(wallet_path)
-                    if not wallet_data:
-                        st.error(f"❌ Could not load wallet: {actual_wallet_file}")
-                        all_results.append({
-                            "step": i+1,
-                            "function_name": function_name,
-                            "success": False,
-                            "error": f"Could not load wallet file: {actual_wallet_file}"
-                        })
-                        continue
-
-                    # Get function guidance and parameters
-                    guidance = get_function_guidance(contract_deployment_id, function_name)
-                    param_values = set_guidance_parameters(guidance, step_complete_dict)
-
-                    # Build function call arguments
-                    call_args = build_function_call_data(contract_deployment_id, function_name, param_values, address_inputs)
-
-                    # Get function context
-                    ctx = fetch_contract_context(contract_deployment_id, function_name)
-
-                    # Create account from private key
-                    account = Account.from_key(wallet_data["private_key"])
-
-                    if ctx['is_view']:
-                        # Call view function (no transaction)
-                        try:
-                            result = getattr(contract.functions, function_name)(*call_args).call()
-                            step_result = {
-                                "step": i+1,
-                                "function_name": function_name,
-                                "success": True,
-                                "return_value": str(result)
-                            }
-                            all_results.append(step_result)
-                            st.success(f"✅ Step {i+1} completed - View function result: {result}")
-
-                        except Exception as e:
-                            step_result = {
-                                "step": i+1,
-                                "function_name": function_name,
-                                "success": False,
-                                "error": f"View function call failed: {str(e)}"
-                            }
-                            all_results.append(step_result)
-                            st.error(f"❌ Step {i+1} failed - View function error: {str(e)}")
-
-                    else:
-                        # Send transaction
-                        try:
-                            # Get ETH value for this step
-                            value_eth = step_complete_dict.get("eth_value", 0)
-                            value_wei = w3.to_wei(float(value_eth), 'ether') if value_eth else 0
-
-                            # Use metaTransaction function
-                            receipt = metaTransaction(w3, account, contract, value_wei, function_name, *call_args)
-
-                            step_result = {
-                                "step": i+1,
-                                "function_name": function_name,                          
-                                "transaction_hash": receipt['transactionHash'].hex(),
-                                "gas_used": receipt.get('gasUsed', 'N/A'),
-                                "size_in_bytes": receipt.get('size_in_bytes', 0)
-                            }
-                            all_results.append(step_result)
-                            st.success(f"✅ Step {i+1} completed - Transaction: {receipt['transactionHash'].hex()}")
-
-                        except Exception as e:
-                            step_result = {
-                                "step": i+1,
-                                "function_name": function_name,
-                                "success": False,
-                                "error": f"Transaction failed: {str(e)}"
-                            }
-                            all_results.append(step_result)
-                            st.error(f"❌ Step {i+1} failed - Transaction error: {str(e)}")
-
-                except Exception as e:
-                    # Try to get actor and wallet info if they were defined
+                        progress_bar.empty()
+                        status_text.empty()
                     try:
-                        actor_info = {
-                            "sender_actor": sender_wallet_actor,
-                            "sender_wallet": actual_wallet_file
-                        }
-                    except NameError:
-                        # Variables not yet defined in this step
-                        actor_info = {
-                            "sender_actor": execution_step.get("ethereum", {}).get("sender_wallet", "unknown"),
-                            "sender_wallet": "not_resolved"
-                        }
+                        # Get function name and parameters
+                        function_name = execution_step["function_name"]
 
-                    step_result = {
-                        "step": i+1,
-                        "function_name": execution_step.get("function_name", "unknown"),
-                        "success": False,
-                        "error": f"Step execution failed: {str(e)}",
-                        **actor_info
-                    }
-                    all_results.append(step_result)
-                    st.error(f"❌ Step {i+1} failed - General error: {str(e)}")
+                        # Build step-specific complete_dict
+                        step_complete_dict = {}
+
+                        # Add args from execution step
+                        if "args" in execution_step:
+                            step_complete_dict.update(execution_step["args"])
+
+                        # Add ethereum config from execution step
+                        if "ethereum" in execution_step:
+                            ethereum_config = execution_step["ethereum"]
+                            step_complete_dict.update(ethereum_config)
+
+                        # Get sender wallet actor name for this step
+                        sender_wallet_actor = step_complete_dict.get("sender_wallet", None)
+                        if sender_wallet_actor is None:
+                            st.error(f"❌ sender_wallet not specified for step {i+1}")
+                            all_results.append({
+                                "step": i+1,
+                                "function_name": function_name,
+                                "success": False,
+                                "error": "sender_wallet not specified in execution step"
+                            })
+                            continue
+
+                        # Resolve actor name to actual wallet file
+                        actual_wallet_file = actors_dict.get(sender_wallet_actor, None)
+                        if actual_wallet_file is None:
+                            st.error(f"❌ Actor '{sender_wallet_actor}' not found in binding")
+                            all_results.append({
+                                "step": i+1,
+                                "function_name": function_name,
+                                "success": False,
+                                "error": f"Actor '{sender_wallet_actor}' not found in actor binding"
+                            })
+                            continue
+
+
+                        # Load wallet for this step
+                        wallet_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ethereum_wallets", actual_wallet_file)
+                        wallet_data = load_wallet_from_file(wallet_path)
+                        if not wallet_data:
+                            st.error(f"❌ Could not load wallet: {actual_wallet_file}")
+                            all_results.append({
+                                "step": i+1,
+                                "function_name": function_name,
+                                "success": False,
+                                "error": f"Could not load wallet file: {actual_wallet_file}"
+                            })
+                            continue
+
+                        # Get function guidance and parameters
+                        guidance = get_function_guidance(contract_deployment_id, function_name)
+                        param_values = set_guidance_parameters(guidance, step_complete_dict)
+
+                        # Build function call arguments
+                        call_args = build_function_call_data(contract_deployment_id, function_name, param_values, address_inputs)
+
+                        # Get function context
+                        ctx = fetch_contract_context(contract_deployment_id, function_name)
+
+                        # Create account from private key
+                        account = Account.from_key(wallet_data["private_key"])
+
+                        if ctx['is_view']:
+                            # Call view function (no transaction)
+                            try:
+                                result = getattr(contract.functions, function_name)(*call_args).call()
+                                step_result = {
+                                    "step": i+1,
+                                    "function_name": function_name,
+                                    "success": True,
+                                    "return_value": str(result)
+                                }
+                                all_results.append(step_result)
+                                st.success(f"✅ Step {i+1} completed - View function result: {result}")
+
+                            except Exception as e:
+                                step_result = {
+                                    "step": i+1,
+                                    "function_name": function_name,
+                                    "success": False,
+                                    "error": f"View function call failed: {str(e)}"
+                                }
+                                all_results.append(step_result)
+                                st.error(f"❌ Step {i+1} failed - View function error: {str(e)}")
+
+                        else:
+                            # Send transaction
+                            try:
+                                # Get ETH value for this step
+                                value_eth = step_complete_dict.get("eth_value", 0)
+                                value_wei = w3.to_wei(float(value_eth), 'ether') if value_eth else 0
+
+                                # Use metaTransaction function
+                                receipt = metaTransaction(w3, account, contract, value_wei, function_name, *call_args)
+
+                                step_result = {
+                                    "step": i+1,
+                                    "function_name": function_name,                          
+                                    "transaction_hash": receipt['transactionHash'].hex(),
+                                    "gas_used": receipt.get('gasUsed', 'N/A'),
+                                    "size_in_bytes": receipt.get('size_in_bytes', 0)
+                                }
+                                all_results.append(step_result)
+                                st.success(f"✅ Step {i+1} completed - Transaction: {receipt['transactionHash'].hex()}")
+
+                            except Exception as e:
+                                step_result = {
+                                    "step": i+1,
+                                    "function_name": function_name,
+                                    "success": False,
+                                    "error": f"Transaction failed: {str(e)}"
+                                }
+                                all_results.append(step_result)
+                                st.error(f"❌ Step {i+1} failed - Transaction error: {str(e)}")
+
+                    except Exception as e:
+                        # Try to get actor and wallet info if they were defined
+                        try:
+                            actor_info = {
+                                "sender_actor": sender_wallet_actor,
+                                "sender_wallet": actual_wallet_file
+                            }
+                        except NameError:
+                            # Variables not yet defined in this step
+                            actor_info = {
+                                "sender_actor": execution_step.get("ethereum", {}).get("sender_wallet", "unknown"),
+                                "sender_wallet": "not_resolved"
+                            }
+
+                        step_result = {
+                            "step": i+1,
+                            "function_name": execution_step.get("function_name", "unknown"),
+                            "success": False,
+                            "error": f"Step execution failed: {str(e)}",
+                            **actor_info
+                        }
+                        all_results.append(step_result)
+                        st.error(f"❌ Step {i+1} failed - General error: {str(e)}")
         
+        if _execute_ctx:
+            _execute_ctx.update(label="✅ Esecuzione completata", state="complete", expanded=False)
+
         # Prepare final results
         final_results = {
             "network": network,
             "success": True,
             "platform": "Ethereum",
-            "trace_title": f"{contract_deployment_id}_results",
+            "trace_title": json_file.get("trace_title", contract_deployment_id) + "_results",
             "results": all_results
         }
         
@@ -317,6 +340,8 @@ def exec_contract_automatically(contract_deployment_id):
         return final_results
                 
     except Exception as e:
+        if _execute_ctx:
+            _execute_ctx.update(label="❌ Esecuzione fallita", state="error", expanded=True)
         # Prepare error results
         error_results = {
             "network": network if 'network' in locals() else "unknown",
