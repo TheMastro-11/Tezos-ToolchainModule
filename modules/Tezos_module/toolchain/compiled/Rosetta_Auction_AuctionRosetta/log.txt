@@ -1,8 +1,0 @@
-Creating contract KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1
- -> (Pair {} (Pair None (Pair 5 (Pair None (Pair "reason" (Pair "tz1SL2xBdmLSD2W3Hs84SfH912xDpYtAjsaa" (Right (Right Unit))))))))
-file AuctionRosetta/step_001_cont_0_storage.tz
-file AuctionRosetta/step_001_cont_0_storage.json
-file AuctionRosetta/step_001_cont_0_storage.py
-file AuctionRosetta/step_001_cont_0_types.py
-file AuctionRosetta/step_001_cont_0_contract.tz contract AuctionRosetta
-file AuctionRosetta/step_001_cont_0_contract.json contract AuctionRosetta

@@ -1,6 +1,0 @@
-{
-  "contract_id": "Rosetta/Bet:BetRosetta",
-  "contract_name": "Rosetta_Bet_BetRosetta",
-  "source": "/Users/mastro/Documents/GitHub/Tezos-ToolchainModule/modules/Tezos_module/contracts/Rosetta/Bet/BetRosetta.py",
-  "output_dir": "/Users/mastro/Documents/GitHub/Tezos-ToolchainModule/modules/Tezos_module/toolchain/compiled/Rosetta_Bet_BetRosetta"
-}

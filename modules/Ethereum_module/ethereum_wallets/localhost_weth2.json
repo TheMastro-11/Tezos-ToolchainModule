@@ -1,5 +1,20 @@
 {
-  "address": "0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0",
-  "private_key": "0x6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1",
-  "encrypted": false
+  "address": "70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "crypto": {
+    "cipher": "aes-128-ctr",
+    "cipherparams": {
+      "iv": "158df1e32d7f8afc683ba3edb7ac1ee3"
+    },
+    "ciphertext": "0ba97e09c47ace630ebffa2e57c6930488e37b8ef1448bf58161aec6e7a99b07",
+    "kdf": "pbkdf2",
+    "kdfparams": {
+      "c": 262144,
+      "dklen": 32,
+      "prf": "hmac-sha256",
+      "salt": "8a400cfa21b9fcb284f11a5cd03f49f4"
+    },
+    "mac": "6d1c4b261988dea2fe5de41771a3d737b28c6dc6aa96f0c3380b3d298e0437fe"
+  },
+  "id": "ed7ac7b1-4775-48a5-8356-16adc33e035c",
+  "version": 3
 }

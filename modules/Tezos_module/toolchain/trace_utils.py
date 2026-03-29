@@ -135,6 +135,7 @@ def get_last_trace_setup():
 
 
 def restore_trace_setup():
+    st.session_state["_rosetta_restore_pending"] = True
     queue_trace_view("Execution Setup")
 
 

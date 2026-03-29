@@ -38,6 +38,7 @@ from trace_utils import (
     run_trace_with_report,
     summarize_trace_payload,
     queue_trace_view,
+    restore_trace_setup,
 )
 
 from Cardano_module.cardano_module.cardano_utils import cardano_base_path
@@ -56,10 +57,19 @@ def render_evm_trace_results():
     if not evm_results:
         return
 
-    hcol1, hcol2 = st.columns([5, 1])
+    last_setup = get_last_trace_setup()
+    has_tezos_report = bool(get_trace_report_state())
+
+    hcol1, hcol2, hcol3 = st.columns([4, 2, 1])
     with hcol1:
         st.subheader("⚡ Ethereum (EVM) Execution Report")
     with hcol2:
+        if last_setup and not has_tezos_report:
+            if st.button("🔄 Riesegui Ultimo Setup", use_container_width=True,
+                         help="Torna all'Execution Setup con la stessa configurazione"):
+                restore_trace_setup()
+                st.rerun()
+    with hcol3:
         if st.button("🗑️ Clear EVM", use_container_width=True):
             st.session_state.pop("evm_trace_results", None)
             st.rerun()
@@ -293,6 +303,22 @@ def select_trace_file():
     }
     toolchain_options = [_toolchain_label_map.get(k, k.title()) for k in config_list]
 
+    # Se "Riesegui" è stato cliccato, forza il multiselect al valore salvato
+    last_setup = get_last_trace_setup()
+    if st.session_state.pop("_rosetta_restore_pending", False):
+        if (last_setup and "selected_toolchain_keys" in last_setup and
+                last_setup.get("selected_contract") == selected_contract):
+            _saved_labels = [
+                _toolchain_label_map.get(k, k.title())
+                for k in last_setup["selected_toolchain_keys"]
+                if k in config_list
+            ]
+            _valid_labels = [l for l in _saved_labels if l in toolchain_options]
+            if _valid_labels:
+                st.session_state[
+                    f"rosetta_toolchain_select_{selected_contract}_{selected_trace}"
+                ] = _valid_labels
+
     # Compute keys after multiselect (rendered later); default all selected
     selected_toolchain_labels = st.session_state.get(
         f"rosetta_toolchain_select_{selected_contract}_{selected_trace}", toolchain_options
@@ -442,6 +468,7 @@ def select_trace_file():
             "execute_compile": execute_compile, "execute_redeploy": execute_redeploy,
             "initial_balance": initial_balance, "selected_trace_suite": selected_trace_suite,
             "show_live_terminal_output": show_live_terminal_output,
+            "selected_toolchain_keys": selected_toolchain_keys,
         })
 
         # ── 1. Build chain list and column layout ──────────────────────────────────────────────

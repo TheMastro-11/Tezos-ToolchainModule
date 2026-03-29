@@ -1,7 +1,20 @@
 {
-  "address": "0x0Ab26b42D19609e019D4805DD65E1E4F946329f3",
-  "private_key": "0x5d6c4b0d99d861b6fc24af396c0111ae49087325d5a8f891d76be6cd8f91ab6e",
-  "encrypted": false,
-  "created_at": "2025-10-15T10:31:59.026499",
-  "note": "Wallet NON crittografato - solo per testing!"
+  "address": "90F79bf6EB2c4f870365E785982E1f101E93b906",
+  "crypto": {
+    "cipher": "aes-128-ctr",
+    "cipherparams": {
+      "iv": "1a96e52bcbe675033948a45cc2126fb4"
+    },
+    "ciphertext": "79e8512d2a278175861ac3b8ec10ed48639143072661595af2dc7aab3c420035",
+    "kdf": "pbkdf2",
+    "kdfparams": {
+      "c": 262144,
+      "dklen": 32,
+      "prf": "hmac-sha256",
+      "salt": "ddefd8ff7bcb667e96c9124dacabc354"
+    },
+    "mac": "a2ce2b71261f5164ec29dcc6d70d478b751ffd5cc1d3cb324000800c93fa6247"
+  },
+  "id": "93d0acc6-19f9-4b36-83f8-7471949d6925",
+  "version": 3
 }

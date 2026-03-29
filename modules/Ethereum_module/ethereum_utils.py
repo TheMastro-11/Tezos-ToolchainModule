@@ -2,6 +2,7 @@ import os
 import json
 import subprocess
 import platform
+import streamlit as st
 from web3 import Web3
 from eth_account import Account
 import secrets
@@ -25,6 +26,10 @@ ethereum_base_path = _this_dir
 hardhat_base_path = os.path.join(_this_dir, "hardhat_module")
 # Global default network - can be changed by set_default_network()
 DEFAULT_NETWORK = "localhost"
+# Password used to encrypt/decrypt the local test keystore wallet files.
+# These wallets use Hardhat's publicly-known deterministic accounts,
+# so this password is intentionally fixed and not a security secret.
+_WALLET_TEST_PASSWORD = "hardhat_test"
 
 
 def read_json(file_path):
@@ -61,10 +66,10 @@ def bind_actors(trace_name, trace_data=None):
     trace_actors  = data["trace_actors"]
     wallets_path = os.path.join(_this_dir, "ethereum_wallets")
     
-    # Filter only .json wallet files
+    # Filter only .json wallet files; sort for deterministic ordering
     all_files = os.listdir(wallets_path)
-    wallets = [f for f in all_files if f.endswith('.json') and os.path.isfile(os.path.join(wallets_path, f))]
-    
+    wallets = sorted([f for f in all_files if f.endswith('.json') and os.path.isfile(os.path.join(wallets_path, f))])
+
     if len(wallets) < len(trace_actors):
         print(f"Not enough wallet files! Found {len(wallets)} wallets but need {len(trace_actors)} for actors: {trace_actors}")
         print(f"Available wallets: {wallets}")
@@ -72,8 +77,7 @@ def bind_actors(trace_name, trace_data=None):
 
     try:
         for j in range(len(trace_actors)):
-            print(f"Associating actor '{trace_actors[j]}' with wallet '{wallets[j+3]}'")
-            association[trace_actors[j]] = wallets[j+3]
+            association[trace_actors[j]] = wallets[j]
             print(f"  Actor '{trace_actors[j]}' -> Wallet '{wallets[j]}'")
     except IndexError:
         print("The wallets are less than the actors, impossible to associate.\nCreate more wallets or reduce the number of actors")
@@ -105,16 +109,32 @@ def build_complete_dict(trace_name, trace_data=None):
 
     return complete_dict
 
-def set_guidance_parameters(guidance , complete_dict):
+def _resolve_param_name(param_name, complete_dict):
+    """Flexible lookup: try exact name, then toggle leading underscore.
+    Solidity often prefixes params with '_' (e.g. _duration vs duration)."""
+    if param_name in complete_dict:
+        return param_name
+    # try stripping a leading underscore
+    alt = param_name.lstrip("_")
+    if alt != param_name and alt in complete_dict:
+        return alt
+    # try adding a leading underscore
+    alt = "_" + param_name
+    if alt not in (param_name,) and alt in complete_dict:
+        return alt
+    return None
+
+
+def set_guidance_parameters(guidance, complete_dict):
 
     param_values = {}
     for param in guidance['parameters']:
         param_name = param['name']
         if param['type'] == 'address':
             continue  # Skip address inputs
-        if param_name in complete_dict:
-            
-            param_values[param['name']] = complete_dict[param_name]
+        resolved = _resolve_param_name(param_name, complete_dict)
+        if resolved is not None:
+            param_values[param_name] = complete_dict[resolved]
         else:
             st.error(f"❌ Missing parameter value for: {param_name}")
             return None
@@ -270,10 +290,28 @@ def create_ethereum_wallet(wallet_name=None):
 
 
 def load_wallet_from_file(wallet_file_path):
-    """Load wallet data from a JSON file."""
+    """Load wallet data from a JSON file.
+
+    Supports two formats:
+    - Legacy plain-text  : {"address": "0x…", "private_key": "0x…", …}
+    - EIP-55 keystore    : {"address": "…", "crypto": {…}, "version": 3, …}
+      The keystore is decrypted automatically with the local test password.
+    """
     try:
         with open(wallet_file_path, 'r', encoding='utf-8') as f:
             wallet_data = json.load(f)
+
+        # Detect encrypted keystore (EIP-55 / web3 format)
+        if "crypto" in wallet_data or "Crypto" in wallet_data:
+            private_key_bytes = Account.decrypt(wallet_data, _WALLET_TEST_PASSWORD)
+            raw_address = wallet_data.get("address", "")
+            if raw_address and not raw_address.startswith("0x"):
+                raw_address = "0x" + raw_address
+            return {
+                "address": Web3.to_checksum_address(raw_address) if raw_address else None,
+                "private_key": "0x" + private_key_bytes.hex(),
+            }
+
         return wallet_data
     except Exception as e:
         print(f"Error loading wallet: {e}")

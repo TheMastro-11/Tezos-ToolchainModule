@@ -1,1 +1,0 @@
-sp.record(bids = {}, end_time = None, highest_bid = sp.mutez(5), highest_bidder = None, object = 'reason', seller = sp.address('tz1SL2xBdmLSD2W3Hs84SfH912xDpYtAjsaa'), state = WAIT_START)

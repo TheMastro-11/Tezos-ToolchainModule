@@ -190,26 +190,26 @@ def build_function_call_data(contract_deployment_id, function_name, param_values
                 
         else:
             # Handle other parameter types
-            #add an int , bool , float , string handling
+            raw_value = param_values.get(param_name, '')
+            # Normalise to string only for validation; keep native types when already correct
+            param_value = str(raw_value).strip() if not isinstance(raw_value, (int, float, bool)) else raw_value
 
-            param_value = param_values.get(param_name, '').strip()
-
-            
-            
-            if not param_value or param_value == '--':
+            if param_value == '' or param_value == '--':
                 raise ValueError(f"Parameter {param_name} not provided")
-            
+
             # Type conversion
             if param_type.startswith('uint') or param_type.startswith('int'):
                 try:
                     call_args.append(int(param_value))
-                except ValueError:
+                except (ValueError, TypeError):
                     raise ValueError(f"Invalid integer value for {param_name}: {param_value}")
-                    
+
             elif param_type == 'bool':
-                if param_value.lower() == 'true':
+                if isinstance(raw_value, bool):
+                    call_args.append(raw_value)
+                elif str(param_value).lower() == 'true':
                     call_args.append(True)
-                elif param_value.lower() == 'false':
+                elif str(param_value).lower() == 'false':
                     call_args.append(False)
                 else:
                     raise ValueError(f"Invalid boolean value for {param_name}: {param_value}")

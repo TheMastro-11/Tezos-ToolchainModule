@@ -13,7 +13,8 @@ def metaTransaction(w3, account, contract, value, function, *parameters):
         })
 
         # Add nonce and gas estimation with fallback
-        transaction.update({"nonce": w3.eth.get_transaction_count(account.address)})
+        # Use 'pending' to include in-flight txs and avoid nonce collisions
+        transaction.update({"nonce": w3.eth.get_transaction_count(account.address, 'pending')})
         
         # Try to estimate gas, use fallback if it fails
         print(f"🔍 Transaction before gas estimation: {transaction}")
