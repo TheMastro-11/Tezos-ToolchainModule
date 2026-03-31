@@ -2,8 +2,8 @@ import streamlit as st
 
 pg = st.navigation(
     {
-        "Rosetta": [
-            st.Page("pages/Rosetta.py", title="Rosetta", icon="🌹", default=True),
+        "MultiModular Toolchain": [
+            st.Page("pages/Rosetta.py", title="MultiModular Toolchain", icon="🔀", default=True),
         ],
         "Single Toolchain": [
             st.Page("pages/Solana.py",   title="Solana",            icon="🌞"),

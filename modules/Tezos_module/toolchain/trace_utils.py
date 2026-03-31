@@ -19,7 +19,6 @@ from main import (
     normalizeContractToken,
     exportResult,
     exportTraceResult,
-    executionSetupCsv,
     executionSetupJson,
 )
 
@@ -223,7 +222,7 @@ def render_trace_selection_summary(selected_contract, execution_mode, trace_name
     if option_labels:
         st.caption(" • ".join(option_labels))
     preview_rows = [{"#": i + 1, "Trace": t} for i, t in enumerate(trace_names)]
-    st.dataframe(preview_rows, use_container_width=True, hide_index=True)
+    st.dataframe(preview_rows, width='stretch', hide_index=True)
 
 
 def render_execution_phase_payload(payload):
@@ -249,7 +248,7 @@ def render_execution_phase_payload(payload):
             "Gas": step_data.get("Gas", 0),
             "Weight": step_data.get("Weight", 0),
         })
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    st.dataframe(rows, width='stretch', hide_index=True)
     with st.expander("Raw execution payload"):
         st.json(payload)
 
@@ -279,7 +278,7 @@ def update_live_trace_progress(status_box, progress_bar, results_placeholder, co
         if current_trace:
             st.caption(f"Current trace: `{current_trace}`")
     if completed_items:
-        results_placeholder.dataframe(completed_items, use_container_width=True, hide_index=True)
+        results_placeholder.dataframe(completed_items, width='stretch', hide_index=True)
     else:
         results_placeholder.info("The execution summary will appear here as traces complete.")
 
@@ -304,74 +303,98 @@ def render_trace_report():
     if not report:
         st.info("No trace report available yet.")
         return
-    header_col1, header_col2, header_col3 = st.columns([3, 2, 1])
-    with header_col1:
-        status = report.get("status", "success")
-        if status == "success":
-            st.success(report.get("title", "Trace execution completed."))
-        else:
-            st.error(report.get("title", "Trace execution failed."))
+
+    # --- Status banner ---
+    overall_status = report.get("status", "success")
+    title_text = report.get("title", "Tezos trace execution")
+    if overall_status == "success":
+        st.success(f"✅ {title_text}")
+    else:
+        st.error(f"❌ {title_text}")
+
+    # --- Action buttons ---
+    btn_col1, btn_col2, _ = st.columns([2, 2, 4])
     last_setup = get_last_trace_setup()
-    with header_col2:
+    with btn_col1:
         if last_setup and st.button("🔄 Riesegui Ultimo Setup",
                                     help="Torna all'Execution Setup con la stessa configurazione",
-                                    use_container_width=True):
+                                    width='stretch'):
             restore_trace_setup()
             st.rerun()
-    with header_col3:
-        if st.button("🗑️ Clear", help="Cancella il report", use_container_width=True):
+    with btn_col2:
+        if st.button("🗑️ Clear Tezos", help="Cancella il report Tezos", width='stretch'):
             st.session_state.pop("trace_report_data", None)
             st.session_state.pop("last_trace_setup", None)
             queue_trace_view("Execution Setup")
             st.rerun()
+
     summary = report.get("summary", {})
     result_rows = build_trace_result_rows(report)
-    tc = st.columns(4)
-    tc[0].metric("Executed traces", summary.get("executed_traces", 0))
-    tc[1].metric("Execution mode", summary.get("execution_mode", "-"))
-    tc[2].metric("Deploy", "Enabled" if summary.get("execute_deploy") else "Disabled")
-    tc[3].metric("Contract suite", summary.get("selected_suite") or "Auto")
+
+    # --- 4 summary metrics (matching EVM style) ---
+    mc = st.columns(4)
+    mc[0].metric("Executed traces", summary.get("executed_traces", 0))
+    mc[1].metric("Network", "ghostnet")
+    mc[2].metric("Deploy", "Enabled" if summary.get("execute_deploy") else "Disabled")
+    mc[3].metric("Suite", summary.get("selected_suite") or "Auto")
+
+    # --- Aggregate metrics ---
     if result_rows:
+        total_steps = sum(r["Steps"] for r in result_rows)
+        total_cost  = sum(r["Total cost"] for r in result_rows)
+        total_gas   = sum(r["Gas"] for r in result_rows)
+        passed      = sum(1 for r in result_rows if r["Status"] == "success")
         ac = st.columns(3)
-        ac[0].metric("Total steps", sum(r["Steps"] for r in result_rows))
-        ac[1].metric("Total cost", sum(r["Total cost"] for r in result_rows))
-        ac[2].metric("Total gas", sum(r["Gas"] for r in result_rows))
+        ac[0].metric("Total steps", total_steps)
+        ac[1].metric("Total cost (mutez)", total_cost)
+        ac[2].metric("Passed traces", f"{passed}/{len(result_rows)}")
+
+        # --- Trace overview dataframe ---
         st.subheader("Trace overview")
-        st.dataframe(result_rows, use_container_width=True, hide_index=True)
+        st.dataframe(result_rows, width='stretch', hide_index=True)
+
     report_error = report.get("error")
     if report_error:
         with st.expander("Execution error", expanded=True):
             st.code(report_error, language="text")
+
+    # --- Detailed results (EVM-style per-trace containers) ---
     st.subheader("Detailed results")
     for tr in report.get("traces", []):
-        trace_name = tr.get("trace_name", "Trace")
+        trace_name    = tr.get("trace_name", "Trace")
         trace_address = tr.get("contract_address")
-        trace_status = tr.get("status", "success")
-        label = f"{trace_phase_status_icon(trace_status)} {trace_name}"
+        trace_status  = tr.get("status", "success")
+        icon          = trace_phase_status_icon(trace_status)
+
         with st.container(border=True):
-            hl, hr = st.columns([3, 2])
-            with hl:
-                st.markdown(f"**{label}**")
-                if tr.get("contract_id"):
-                    st.caption(f"Contract: `{tr['contract_id']}`")
-            with hr:
-                if trace_address:
-                    st.caption(f"Address: `{trace_address}`")
+            st.markdown(f"**{icon} {trace_name}**")
+            if trace_address:
+                st.caption(f"Address: `{trace_address}`")
+            elif tr.get("contract_id"):
+                st.caption(f"Contract: `{tr['contract_id']}`")
+
+            phases     = tr.get("phases", {})
             phase_tabs = st.tabs(["Summary", "Compile", "Deploy", "Execute"])
-            phases = tr.get("phases", {})
+
+            # Summary tab — phase status table
             with phase_tabs[0]:
                 sr = []
                 for pn in ["compile", "deploy", "execute"]:
                     pd_data = phases.get(pn)
                     if pd_data is not None:
-                        sr.append({"Phase": pn.title(), "Status": pd_data.get("status", "-"),
-                                   "Details": pd_data.get("details", "-")})
+                        sr.append({
+                            "Phase":   pn.title(),
+                            "Status":  pd_data.get("status", "-"),
+                            "Details": pd_data.get("details", "-"),
+                        })
                 if sr:
-                    st.dataframe(sr, use_container_width=True, hide_index=True)
+                    st.dataframe(sr, width='stretch', hide_index=True)
                 else:
                     st.info("No phase summary available.")
-            for ti, pn in enumerate(["compile", "deploy", "execute"], start=1):
-                with phase_tabs[ti]:
+
+            # Compile / Deploy / Execute tabs
+            for tab_idx, pn in enumerate(["compile", "deploy", "execute"], start=1):
+                with phase_tabs[tab_idx]:
                     pd_data = phases.get(pn)
                     if pd_data is None:
                         st.info(f"{pn.title()} phase not available for this trace.")
@@ -379,6 +402,8 @@ def render_trace_report():
                         render_phase_block(pn, pd_data)
                         if pn == "execute":
                             render_execution_phase_payload(pd_data.get("payload"))
+
+    # --- Back button ---
     if st.button("⬅️ Back to execution setup", key="trace_report_back_button"):
         queue_trace_view("Execution Setup")
         st.rerun()
@@ -398,9 +423,7 @@ def create_trace_phase(status, output="", details=None, payload=None):
 # ---------------------------------------------------------------------------
 
 def execution_setup_auto(contract, rows):
-    if isinstance(rows, dict) and "trace_execution" in rows:
-        return executionSetupJson(contractId=contract, traceData=rows)
-    return executionSetupCsv(contractId=contract, rows=rows)
+    return executionSetupJson(contractId=contract, traceData=rows)
 
 
 def render_trace_execution(trace_name, trace_data, contract_name, render_live=False, output_placeholder=None):

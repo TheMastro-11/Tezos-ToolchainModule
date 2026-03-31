@@ -12,7 +12,7 @@ def main():
             self.data.state = sp.cast(sp.variant.WAIT_START(), states)
             self.data.object = object
             self.data.seller = seller
-            self.data.end_time = sp.cast(None, sp.option[sp.timestamp])
+            self.data.end_time = sp.cast(None, sp.option[sp.nat])
             self.data.highest_bidder = sp.cast(None, sp.option[sp.address])
             self.data.highest_bid = starting_bid
             self.data.bids = sp.cast(sp.big_map(), sp.big_map[sp.address, sp.mutez])
@@ -22,19 +22,19 @@ def main():
             assert self.data.state == sp.cast(sp.variant.WAIT_START(), states), "Auction already started"
             assert sp.sender == self.data.seller, "Only the seller"
             self.data.state = sp.cast(sp.variant.WAIT_CLOSING(), states)
-            self.data.end_time = sp.Some(sp.add_seconds(sp.now,duration))
+            self.data.end_time = sp.Some(sp.level + duration)
 
         @sp.entrypoint
         def bid(self):
             assert self.data.state == sp.cast(sp.variant.WAIT_CLOSING(), states), "Auction not started or already closed"
-            assert sp.now < self.data.end_time.unwrap_some(), "Bidding time expired"
+            assert sp.level < self.data.end_time.unwrap_some(), "Bidding time expired"
             
             assert sp.amount > self.data.highest_bid, "value must be greater than highest"
 
             if (self.data.highest_bidder.is_some()):
                 self.data.bids[self.data.highest_bidder.unwrap_some()] = self.data.highest_bid
 
-            if (self.data.bids.contains(sp.sender) and self.data.bids[sp.sender] != sp.mutez(0)):
+            if (sp.sender in self.data.bids and self.data.bids[sp.sender] != sp.mutez(0)):
                 sp.transfer((), sp.mutez(0), sp.self_entrypoint("withdraw"))
 
             self.data.highest_bidder = sp.Some(sp.sender)
@@ -43,7 +43,7 @@ def main():
         @sp.entrypoint
         def withdraw(self):
             assert self.data.state == sp.cast(sp.variant.WAIT_CLOSING(), states), "Auction not started"
-            if self.data.bids.contains(sp.sender):
+            if sp.sender in self.data.bids:
                 bal = self.data.bids[sp.sender]
                 self.data.bids[sp.sender] = sp.mutez(0)
                 sp.send(sp.sender, bal)
@@ -52,7 +52,7 @@ def main():
         def end(self):
             assert sp.sender == self.data.seller, "Only the seller"
             assert self.data.state == sp.cast(sp.variant.WAIT_CLOSING(), states), "Auction not started"
-            assert sp.now >= self.data.end_time.unwrap_some(), "Auction not ended"
+            assert sp.level >= self.data.end_time.unwrap_some(), "Auction not ended"
             self.data.state = sp.cast(sp.variant.CLOSED(), states)
             sp.send(self.data.seller, self.data.highest_bid)
             

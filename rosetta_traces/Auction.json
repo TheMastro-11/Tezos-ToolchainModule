@@ -76,7 +76,7 @@
     {
       "sequence_id": "4",
       "function_name": "end",
-      "waiting_time": 30,
+      "waiting_time": 15,
       "actors": [
         "player1"
       ],

@@ -12,7 +12,7 @@ The toolchain is built using the `PyTezos` library for communication with the Te
   * **Blockchain Library:** PyTezos
   * **Smart Contract Framework:** SmartPy
   * **Supported Operations:** Compilation, Deployment, Interaction, Trace Execution
-  * **Output:** Transaction cost reports in CSV and JSON formats
+  * **Output:** Transaction cost reports in JSON format
 
 -----
 
@@ -25,12 +25,11 @@ The toolchain consists of a main module that orchestrates several specialized ut
       * `main.py`: This is the heart of the toolchain. It manages the interactive menu, collects user input, and invokes the appropriate functions to perform the requested operation (e.g., compile, deploy).
       * `contractUtils.py`: This module provides the logical functions for interacting with the blockchain. It contains the logic to compile `SmartPy` files, originate (deploy) new contracts on the network, and call their entrypoints. It is also responsible for analyzing the results of operations to extract detailed cost information (gas, storage fees).
       * `folderScan.py`: A simple utility that scans the `../contracts/` directory to identify all available smart contract projects that the toolchain can interact with.
-      * `csvUtils.py` & `jsonUtils.py`: These modules handle data persistence. `csvUtils` is used to read execution traces (CSV files defining a sequence of contract calls) and to write transaction reports. `jsonUtils` is responsible for updating the list of deployed contract addresses and saving reports in JSON format.
+      * `jsonUtils.py`: This module handles data persistence. It is responsible for updating the list of deployed contract addresses and saving reports in JSON format.
 
   * **Directory Structure:**
 
       * `toolchain/`: Contains all Python scripts for the toolchain.
-      * `toolchain/execution_traces/`: Stores the CSV files with execution traces for automated contract testing.
       * `contracts/`: Contains subfolders for each smart contract, with each folder holding its SmartPy source code (`.py`) and, in some cases, a descriptive `README.md` file.
 
 -----
@@ -62,8 +61,8 @@ The user starts the toolchain by running `python3 main.py` from the command line
 4.  **Trace Execution (Automated Testing):**
 
       * This is the most advanced feature. The user selects "Use Execution Trace".
-      * The `csvUtils.csvReader` module reads files from the `execution_traces/` directory. Each CSV file contains a series of steps, where each row specifies the `entrypoint`, `wallet`, `parameters`, and `tezAmount`.
-      * The `executionSetup` function iterates through these rows, simulating a sequence of real transactions and recording the results for each step. This allows for testing complex scenarios and measuring their costs in a reproducible manner.
+      * The `jsonUtils.jsonReader` module reads JSON trace files from the `rosetta_traces/` directory. Each JSON file contains a series of steps, where each step specifies the `entrypoint`, `wallet`, `parameters`, and `value` (amount in tez as a decimal string, e.g. `"0.5"`).
+      * The `executionSetupJson` function iterates through these steps, simulating a sequence of real transactions and recording the results for each step. This allows for testing complex scenarios and measuring their costs in a reproducible manner.
 
 
 ```mermaid
@@ -74,7 +73,7 @@ graph TD
     B --> D["Compile Selected Contract"]
     B --> E["Run 'Origination' (Deploy)"]
     B --> F["Interact with Existing Contract"]
-    B --> G["Run Test from CSV Trace"]
+    B --> G["Run Test from JSON Trace"]
 
     subgraph "Setup Flow"
         C --> C1("folderScan.py")
@@ -103,11 +102,11 @@ graph TD
 
     subgraph "Automated Test Flow"
         G --> G1["User selects a contract"]
-        G1 --> G2("csvUtils.py: reads CSV file")
-        G2 --> G3{"Loop over CSV rows"}
+        G1 --> G2("jsonUtils.py: reads JSON trace")
+        G2 --> G3{"Loop over trace steps"}
         G3 -->|"Execute transaction"| G4("contractUtils.py: run operation")
         G4 --> G3
-        G3 -->|"End Loop"| G5("Writes CSV/MD report")
+        G3 -->|"End Loop"| G5("Writes JSON report")
     end
 
     Z[End]

@@ -43,7 +43,8 @@ def get_execution_traces():
 
 def exec_contract_automatically(contract_deployment_id, trace_data=None,
                                 execute_deploy=True, execute_compile=True,
-                                initial_balance=None, phase_statuses=None):
+                                initial_balance=None, phase_statuses=None,
+                                network_override=None):
 
     # Use global default network if none specified
     #address_inputs questi sono gli indirizzi da sostituire nei parametri di tipo address , da aggiungere
@@ -58,8 +59,9 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
             st.error(f" Failed to read trace file: {contract_file}")
             return
 
-    # Get network configuration
-    network = json_file.get("configuration", {}).get("evm", {}).get("network", get_default_network())
+    # Get network configuration — network_override from UI takes priority over trace JSON
+    _trace_network = json_file.get("configuration", {}).get("evm", {}).get("network", get_default_network())
+    network = network_override if network_override else _trace_network
     contract_name = json_file.get("trace_title", "") + ".sol"
     actors_dict = bind_actors(contract_deployment_id, trace_data=json_file)
     if not actors_dict:
@@ -73,7 +75,12 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
     # Get all trace execution steps
     trace_executions = json_file.get("trace_execution", [])
 
-    deploy_config = json_file.get("configuration", {}).get("ethereum", {}).get("deploy_config", {})
+    # Rosetta traces use "evm" as the config key; standalone traces may use "ethereum"
+    deploy_config = (
+        json_file.get("configuration", {}).get("evm", {}).get("deploy_config")
+        or json_file.get("configuration", {}).get("ethereum", {}).get("deploy_config")
+        or {}
+    )
 
     # Store results for all function executions
     all_results = []
@@ -82,17 +89,31 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
     _deploy_ctx = (phase_statuses or {}).get("deploy")
     _execute_ctx = (phase_statuses or {}).get("execute")
 
+    # Phase tracking — populated in every branch, included in the return dict
+    _deploy_phase = None
+    _execute_phase = None
+    contract_address = None
+
     #section for automatic deployment
     try:
-        if execute_deploy and deploy_config:
+        if execute_deploy:
+            settings = deploy_config.get("settings", {})
 
-            sender_wallet_name = deploy_config.get("settings", {}).get("sender_wallet", None)
-            sender_wallet = actors_dict.get(sender_wallet_name, None)
+            # sender_wallet: from deploy_config > first trace actor > first actor in binding
+            sender_wallet_name = (
+                settings.get("sender_wallet")
+                or (json_file.get("trace_actors") or [None])[0]
+                or next(iter(actors_dict), None)
+            )
+            sender_wallet = actors_dict.get(sender_wallet_name) or next(iter(actors_dict.values()), None)
+
+            if sender_wallet is None:
+                raise ValueError("No sender wallet available for deployment — check actor binding.")
 
             # initial_balance overrides value_in_ether when explicitly provided
             value_in_ether = (
                 initial_balance if initial_balance is not None
-                else deploy_config.get("settings", {}).get("value_in_ether", 0)
+                else settings.get("value_in_ether", 0)
             )
             constr_dict = actors_dict | deploy_config
 
@@ -100,20 +121,24 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                 automatic_compile_and_deploy_contracts(sender_wallet, network, True, contract_name, constr_dict, value_in_ether)
             if _deploy_ctx:
                 _deploy_ctx.update(label="✅ Deploy completato", state="complete", expanded=False)
+            _deploy_phase = {"status": "success", "details": "Contract deployed."}
 
         elif not execute_deploy:
             if _deploy_ctx:
                 _deploy_ctx.update(label="⏭️ Deploy saltato", state="complete", expanded=False)
             st.info("ℹ️ Deployment skipped (Deploy before execution is disabled).")
+            _deploy_phase = {"status": "skipped", "details": "Deploy disabled."}
         else:
             if _deploy_ctx:
                 _deploy_ctx.update(label="⏭️ Nessuna configurazione deploy", state="complete", expanded=False)
             st.info("ℹ No deployment configuration found, skipping deployment step.")
+            _deploy_phase = {"status": "skipped", "details": "No deploy configuration found."}
 
     except Exception as e:
         if _deploy_ctx:
             _deploy_ctx.update(label="❌ Deploy fallito", state="error", expanded=True)
         st.info(f" Error automatically deploying the contract: {str(e)}")
+        _deploy_phase = {"status": "error", "details": f"Deploy failed: {str(e)}"}
 
     try:
         # Get deployment info (common for all functions)
@@ -245,6 +270,9 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                     # Create account from private key
                     account = Account.from_key(wallet_data["private_key"])
 
+                    # Resolve actor name for this step
+                    step_actor = execution_step.get("actors", [sender_wallet_actor])[0] if execution_step.get("actors") else sender_wallet_actor
+
                     if ctx['is_view']:
                         # Call view function (no transaction)
                         try:
@@ -252,8 +280,12 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                             step_result = {
                                 "step": i+1,
                                 "function_name": function_name,
+                                "actor": step_actor,
                                 "success": True,
-                                "return_value": str(result)
+                                "return_value": str(result),
+                                "transaction_hash": "",
+                                "gas_used": 0,
+                                "size_in_bytes": 0
                             }
                             all_results.append(step_result)
                             st.success(f"✅ Step {i+1} completed - View function result: {result}")
@@ -262,8 +294,12 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                             step_result = {
                                 "step": i+1,
                                 "function_name": function_name,
+                                "actor": step_actor,
                                 "success": False,
-                                "error": f"View function call failed: {str(e)}"
+                                "error": f"View function call failed: {str(e)}",
+                                "transaction_hash": "",
+                                "gas_used": 0,
+                                "size_in_bytes": 0
                             }
                             all_results.append(step_result)
                             st.error(f"❌ Step {i+1} failed - View function error: {str(e)}")
@@ -281,9 +317,10 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                             step_result = {
                                 "step": i+1,
                                 "function_name": function_name,
+                                "actor": step_actor,
                                 "success": True,
                                 "transaction_hash": receipt['transactionHash'].hex(),
-                                "gas_used": receipt.get('gasUsed', 'N/A'),
+                                "gas_used": receipt.get('gasUsed', 0),
                                 "size_in_bytes": receipt.get('size_in_bytes', 0)
                             }
                             all_results.append(step_result)
@@ -293,8 +330,12 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                             step_result = {
                                 "step": i+1,
                                 "function_name": function_name,
+                                "actor": step_actor,
                                 "success": False,
-                                "error": f"Transaction failed: {str(e)}"
+                                "error": f"Transaction failed: {str(e)}",
+                                "transaction_hash": "",
+                                "gas_used": 0,
+                                "size_in_bytes": 0
                             }
                             all_results.append(step_result)
                             st.error(f"❌ Step {i+1} failed - Transaction error: {str(e)}")
@@ -333,35 +374,88 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
         
         if _execute_ctx:
             _execute_ctx.update(label="✅ Esecuzione completata", state="complete", expanded=False)
+        _execute_phase = {"status": "success", "details": f"Executed {len(all_results)} steps."}
 
-        # Prepare final results
+        # --- Build Tezos-compatible output format ---
+        trace_title = json_file.get("trace_title", contract_deployment_id)
+
+        # Aggregate costs per actor
+        actor_costs = {}
+        for step in all_results:
+            actor = step.get("actor", "unknown")
+            gas = step.get("gas_used", 0) if step.get("success", False) else 0
+            size = step.get("size_in_bytes", 0) if step.get("success", False) else 0
+            if actor not in actor_costs:
+                actor_costs[actor] = {"total_cost": 0, "miner_fee": 0, "chain_fee": 0}
+            actor_costs[actor]["total_cost"] += gas
+            actor_costs[actor]["miner_fee"] += gas
+
+        # Total costs
+        total_gas = sum(s.get("gas_used", 0) for s in all_results if s.get("success", False))
+        total_weight = sum(s.get("size_in_bytes", 0) for s in all_results if s.get("success", False))
+
+        # Per-step costs (Tezos format)
+        trace_execution_costs = {}
+        for step in all_results:
+            seq_id = str(step.get("step", ""))
+            gas = step.get("gas_used", 0) if step.get("success", False) else 0
+            trace_execution_costs[seq_id] = {
+                "function_name": step.get("function_name", ""),
+                "actor": step.get("actor", ""),
+                "total_cost": gas,
+                "miner_fee": gas,
+                "chain_fee": 0,
+                "weight": step.get("size_in_bytes", 0),
+                "hash": step.get("transaction_hash", ""),
+                "block_delay": 0,
+                "success": step.get("success", False),
+            }
+            if not step.get("success", False) and step.get("error"):
+                trace_execution_costs[seq_id]["error"] = step.get("error", "")
+
+        output_json = {
+            "trace_title": trace_title,
+            "trace_actors_costs": actor_costs,
+            "total_sequence_execution_costs": {
+                "total_cost": total_gas,
+                "miner_fee": total_gas,
+                "chain_fee": 0,
+                "weight": total_weight,
+                "average_block_delay": 0.0,
+            },
+            "trace_execution_costs": trace_execution_costs,
+        }
+
+        # Internal return dict keeps extra fields needed by the UI
         final_results = {
             "network": network,
             "success": True,
             "platform": "Ethereum",
-            "trace_title": json_file.get("trace_title", contract_deployment_id) + "_results",
-            "results": all_results
+            "trace_title": trace_title,
+            "contract_address": contract_address,
+            "phases": {
+                "deploy": _deploy_phase,
+                "execute": _execute_phase,
+            },
+            "results": all_results,
+            "output": output_json,
         }
-        
-        # Save results to JSON file
+
+        # Save Tezos-compatible JSON to trace_results/
         result_filename = f"{contract_deployment_id}_result.json"
         trace_results_dir = os.path.join(hardhat_base_path, "trace_results")
-        os.makedirs(trace_results_dir, exist_ok=True) 
+        os.makedirs(trace_results_dir, exist_ok=True)
         result_filepath = os.path.join(trace_results_dir, result_filename)
-       
 
-        
-        
         try:
             with open(result_filepath, 'w', encoding='utf-8') as f:
-                json.dump(final_results, f, indent=2, ensure_ascii=False)
-            
+                json.dump(output_json, f, indent=2, ensure_ascii=False)
+
             st.success(f"✅ Results saved to: {result_filename}")
-            
-            # Add download button
+
             with open(result_filepath, 'r', encoding='utf-8') as f:
                 json_data = f.read()
-            
+
             st.download_button(
                 label=" Download Results JSON",
                 data=json_data,
@@ -369,31 +463,77 @@ def exec_contract_automatically(contract_deployment_id, trace_data=None,
                 mime="application/json",
                 help=f"Download the execution results as {result_filename}"
             )
-            
+
         except Exception as e:
             st.warning(f" Could not save results file: {str(e)}")
-        
+
         return final_results
                 
     except Exception as e:
         if _execute_ctx:
             _execute_ctx.update(label="❌ Esecuzione fallita", state="error", expanded=True)
+        _execute_phase = {"status": "error", "details": f"Execution failed: {str(e)}"}
         # Prepare error results
-        error_results = {
-            "network": network if 'network' in locals() else "unknown",
-            "platform": "Ethereum",
-            "trace_title": f"{contract_deployment_id}_results",
-            "error": f"Global execution failed: {str(e)}",
-            "results": all_results  # Return any partial results
-        }
         st.error(f" Execution failed: {str(e)}")
         st.error(traceback.format_exc())
-        # Save error results to JSON file
+        _execute_phase = {"status": "error", "details": f"Execution failed: {str(e)}"}
+
+        # Build partial Tezos-compatible output for error case
+        trace_title = json_file.get("trace_title", contract_deployment_id) if 'json_file' in locals() else contract_deployment_id
+        actor_costs_err = {}
+        trace_execution_costs_err = {}
+        for step in all_results:
+            actor = step.get("actor", "unknown")
+            if actor not in actor_costs_err:
+                actor_costs_err[actor] = {"total_cost": 0, "miner_fee": 0, "chain_fee": 0}
+            seq_id = str(step.get("step", ""))
+            trace_execution_costs_err[seq_id] = {
+                "function_name": step.get("function_name", ""),
+                "actor": actor,
+                "total_cost": step.get("gas_used", 0),
+                "miner_fee": step.get("gas_used", 0),
+                "chain_fee": 0,
+                "weight": step.get("size_in_bytes", 0),
+                "hash": step.get("transaction_hash", ""),
+                "block_delay": 0,
+                "success": step.get("success", False),
+                "error": step.get("error", ""),
+            }
+
+        output_json_err = {
+            "trace_title": trace_title,
+            "trace_actors_costs": actor_costs_err,
+            "total_sequence_execution_costs": {
+                "total_cost": 0, "miner_fee": 0, "chain_fee": 0,
+                "weight": 0, "average_block_delay": 0.0,
+            },
+            "trace_execution_costs": trace_execution_costs_err,
+            "error": str(e),
+        }
+
+        error_results = {
+            "network": network if 'network' in locals() else "unknown",
+            "success": False,
+            "platform": "Ethereum",
+            "trace_title": trace_title,
+            "contract_address": contract_address,
+            "phases": {
+                "deploy": _deploy_phase,
+                "execute": _execute_phase,
+            },
+            "error": f"Global execution failed: {str(e)}",
+            "results": all_results,
+            "output": output_json_err,
+        }
+
+        # Save partial results to trace_results/
         result_filename = f"{contract_deployment_id}_result.json"
-        result_filepath = os.path.join(traces_path, result_filename)
+        trace_results_dir = os.path.join(hardhat_base_path, "trace_results")
+        os.makedirs(trace_results_dir, exist_ok=True)
+        result_filepath = os.path.join(trace_results_dir, result_filename)
         try:
             with open(result_filepath, 'w', encoding='utf-8') as f:
-                json.dump(error_results, f, indent=2, ensure_ascii=False)
+                json.dump(output_json_err, f, indent=2, ensure_ascii=False)
             st.error(f"❌ Execution failed but partial results saved to: {result_filename}")
             with open(result_filepath, 'r', encoding='utf-8') as f:
                 json_data = f.read()

@@ -11,7 +11,6 @@ from contractUtils import (
     getCompiledRoot,
 )
 from folderScan import folderScan, contractSuites, scenarioScan
-from csvUtils import csvWriter
 from jsonUtils import (
     getAddress,
     jsonWriter,
@@ -161,7 +160,7 @@ def interact_view(client):
                         info_result["entryPoint"] = entrypoint_name
                         st.success("Call executed successfully!")
                         st.json(info_result)
-                        if st.checkbox("Save result to CSV/JSON"):
+                        if st.checkbox("Save result to JSON"):
                             st_export_result(info_result)
                     except Exception as e:
                         st.error(f"Error during call: {e}")

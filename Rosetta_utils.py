@@ -39,6 +39,8 @@ from trace_utils import (
     summarize_trace_payload,
     queue_trace_view,
     restore_trace_setup,
+    trace_phase_status_icon,
+    render_phase_block,
 )
 
 from Cardano_module.cardano_module.cardano_utils import cardano_base_path
@@ -51,8 +53,48 @@ except ImportError:
     _evm_available = False
 
 
+def _render_evm_execution_payload(steps, global_error=None):
+    """Render EVM step metrics, table, optional global error, and raw payload.
+
+    Mirrors render_execution_phase_payload() from trace_utils but with EVM fields.
+    """
+    total = len(steps)
+    passed = sum(1 for s in steps if s.get("success", False))
+    failed = total - passed
+    total_gas = sum(s.get("gas_used", 0) or 0 for s in steps)
+
+    mc = st.columns(4)
+    mc[0].metric("Steps", total)
+    mc[1].metric("Passed", passed)
+    mc[2].metric("Failed", failed)
+    mc[3].metric("Total gas", total_gas)
+
+    rows = []
+    for s in steps:
+        tx = s.get("transaction_hash") or ""
+        rows.append({
+            "Step": s.get("step", "-"),
+            "Function": s.get("function_name", "-"),
+            "Status": "OK" if s.get("success", False) else "Fail",
+            "Tx Hash": (tx[:20] + "…") if tx else s.get("return_value", "-"),
+            "Gas": s.get("gas_used", "-"),
+            "Error": s.get("error", ""),
+        })
+    st.dataframe(rows, width='stretch', hide_index=True)
+
+    if global_error:
+        with st.expander("Global error", expanded=True):
+            st.code(global_error, language="text")
+
+    with st.expander("Raw execution payload"):
+        st.json(steps)
+
+
 def render_evm_trace_results():
-    """Render EVM execution results stored in session state."""
+    """Render EVM execution results stored in session state.
+
+    Visual structure mirrors render_trace_report() from trace_utils.
+    """
     evm_results = st.session_state.get("evm_trace_results", [])
     if not evm_results:
         return
@@ -60,20 +102,63 @@ def render_evm_trace_results():
     last_setup = get_last_trace_setup()
     has_tezos_report = bool(get_trace_report_state())
 
-    hcol1, hcol2, hcol3 = st.columns([4, 2, 1])
+    # ── 1. Header: status banner | Riesegui | Clear ───────────────────────────
+    overall_success = all(
+        entry.get("result", {}).get("success", False) for entry in evm_results
+    )
+    hcol1, hcol2, hcol3 = st.columns([3, 2, 1])
     with hcol1:
-        st.subheader("⚡ Ethereum (EVM) Execution Report")
+        if overall_success:
+            st.success("⚡ EVM execution completed successfully.")
+        else:
+            st.error("⚡ EVM execution completed with errors.")
     with hcol2:
         if last_setup and not has_tezos_report:
-            if st.button("🔄 Riesegui Ultimo Setup", use_container_width=True,
+            if st.button("🔄 Riesegui Ultimo Setup", width='stretch',
                          help="Torna all'Execution Setup con la stessa configurazione"):
                 restore_trace_setup()
                 st.rerun()
     with hcol3:
-        if st.button("🗑️ Clear EVM", use_container_width=True):
+        if st.button("🗑️ Clear EVM", width='stretch'):
             st.session_state.pop("evm_trace_results", None)
             st.rerun()
 
+    # ── 2. 4 summary metrics ──────────────────────────────────────────────────
+    first_result = evm_results[0].get("result", {}) if evm_results else {}
+    network_label = first_result.get("network", "unknown")
+    deploy_enabled = any(
+        (entry.get("result", {}).get("phases") or {}).get("deploy", {}).get("status") == "success"
+        for entry in evm_results
+    )
+    tc = st.columns(4)
+    tc[0].metric("Executed traces", len(evm_results))
+    tc[1].metric("Network", network_label)
+    tc[2].metric("Deploy", "Enabled" if deploy_enabled else "Disabled")
+    tc[3].metric("Platform", "Ethereum")
+
+    # ── 3. Aggregate metrics + trace overview dataframe ───────────────────────
+    result_rows = []
+    for entry in evm_results:
+        result = entry.get("result", {})
+        steps = result.get("results", [])
+        result_rows.append({
+            "Trace": entry.get("trace_name", "Trace"),
+            "Status": "success" if result.get("success", False) else "error",
+            "Steps": len(steps),
+            "Gas": sum(s.get("gas_used", 0) or 0 for s in steps),
+            "Address": result.get("contract_address") or "-",
+        })
+
+    if result_rows:
+        ac = st.columns(3)
+        ac[0].metric("Total steps", sum(r["Steps"] for r in result_rows))
+        ac[1].metric("Total gas", sum(r["Gas"] for r in result_rows))
+        ac[2].metric("Passed traces", sum(1 for r in result_rows if r["Status"] == "success"))
+        st.subheader("Trace overview")
+        st.dataframe(result_rows, width='stretch', hide_index=True)
+
+    # ── 4. Detailed results ───────────────────────────────────────────────────
+    st.subheader("Detailed results")
     for entry in evm_results:
         trace_name = entry.get("trace_name", "Trace")
         result = entry.get("result", {})
@@ -81,54 +166,151 @@ def render_evm_trace_results():
         network = result.get("network", "unknown")
         steps = result.get("results", [])
         global_error = result.get("error")
+        address = result.get("contract_address")
+        # Backward-compat: phases key may be absent in results from older sessions
+        phases = result.get("phases") or {}
 
-        status_icon = "✅" if success else "❌"
+        status_label = "success" if success else "error"
+        status_icon = trace_phase_status_icon(status_label)
+
         with st.container(border=True):
-            tcol1, tcol2 = st.columns([4, 2])
-            with tcol1:
+            hl, hr = st.columns([3, 2])
+            with hl:
                 st.markdown(f"**{status_icon} {trace_name}**")
-            with tcol2:
-                st.caption(f"Network: `{network}`")
+            with hr:
+                if address:
+                    st.caption(f"Address: `{address}`")
+                else:
+                    st.caption(f"Network: `{network}`")
 
-            if global_error:
-                with st.expander("Global error", expanded=True):
-                    st.code(global_error, language="text")
+            phase_tabs = st.tabs(["Summary", "Deploy", "Execute"])
 
-            if steps:
-                # Metrics row
-                total = len(steps)
-                passed = sum(1 for s in steps if s.get("success", False))
-                failed = total - passed
-                total_gas = sum(s.get("gas_used", 0) or 0 for s in steps)
-                mc = st.columns(3)
-                mc[0].metric("Steps", total)
-                mc[1].metric("✅ Passed", passed)
-                mc[2].metric("❌ Failed", failed)
+            # Summary tab: phase status table
+            with phase_tabs[0]:
+                summary_rows = []
+                for pn in ["deploy", "execute"]:
+                    pd_data = phases.get(pn)
+                    if pd_data is not None:
+                        summary_rows.append({
+                            "Phase": pn.title(),
+                            "Status": pd_data.get("status", "-"),
+                            "Details": pd_data.get("details", "-"),
+                        })
+                if summary_rows:
+                    st.dataframe(summary_rows, width='stretch', hide_index=True)
+                else:
+                    st.info("No phase summary available.")
 
-                # Steps table
-                rows = []
-                for s in steps:
-                    rows.append({
-                        "Step": s.get("step", "-"),
-                        "Function": s.get("function_name", "-"),
-                        "Status": "✅ OK" if s.get("success", False) else "❌ Fail",
-                        "Tx Hash": (s.get("transaction_hash", "") or "")[:20] + "…"
-                                   if s.get("transaction_hash") else s.get("return_value", "-"),
-                        "Gas": s.get("gas_used", "-"),
-                        "Error": s.get("error", ""),
-                    })
-                st.dataframe(rows, use_container_width=True, hide_index=True)
+            # Deploy tab
+            with phase_tabs[1]:
+                deploy_phase = phases.get("deploy")
+                if deploy_phase is not None:
+                    render_phase_block("deploy", deploy_phase)
+                else:
+                    st.info("Deploy phase not available for this trace.")
 
-                # Per-step detail in expanders
-                failed_steps = [s for s in steps if not s.get("success", False)]
-                if failed_steps:
-                    with st.expander(f"Failed step details ({len(failed_steps)})", expanded=True):
-                        for s in failed_steps:
-                            st.error(
-                                f"**Step {s.get('step')} — {s.get('function_name')}**: {s.get('error', 'unknown error')}"
-                            )
+            # Execute tab
+            with phase_tabs[2]:
+                execute_phase = phases.get("execute")
+                if execute_phase is not None:
+                    render_phase_block("execute", execute_phase)
+                if steps:
+                    _render_evm_execution_payload(steps, global_error)
+                elif global_error:
+                    with st.expander("Global error", expanded=True):
+                        st.code(global_error, language="text")
+                else:
+                    st.info("No step results recorded.")
+
+    # ── 5. Back button ────────────────────────────────────────────────────────
+    if st.button("⬅️ Back to execution setup", key="evm_report_back_button"):
+        queue_trace_view("Execution Setup")
+        st.rerun()
+
+
+def render_cross_chain_comparison():
+    """Render a side-by-side cost comparison between Tezos and EVM results."""
+    tezos_report = get_trace_report_state()
+    evm_results  = st.session_state.get("evm_trace_results", [])
+    if not tezos_report or not evm_results:
+        return
+
+    st.subheader("📊 Cross-Chain Cost Comparison")
+
+    # Build lookup: trace_name → payload (Tezos) / steps list (EVM)
+    tezos_by_name = {}
+    for tr in tezos_report.get("traces", []):
+        name    = tr.get("trace_name", "")
+        payload = tr.get("phases", {}).get("execute", {}).get("payload") or {}
+        tezos_by_name[name] = payload
+
+    evm_by_name = {}
+    for entry in evm_results:
+        name  = entry.get("trace_name", "")
+        steps = entry.get("result", {}).get("results", [])
+        evm_by_name[name] = steps
+
+    all_names = list(dict.fromkeys(list(tezos_by_name) + list(evm_by_name)))
+
+    for trace_name in all_names:
+        tezos_payload = tezos_by_name.get(trace_name, {})
+        evm_steps     = evm_by_name.get(trace_name, [])
+
+        comp_rows = []
+        total_tezos = 0
+        total_evm   = 0
+        seen_funcs  = set()
+
+        # Tezos steps
+        for seq_id, step in tezos_payload.items():
+            fn       = step.get("entryPoint") or step.get("function_name", "")
+            tz_cost  = int(step.get("TotalCost", 0) or 0)
+            total_tezos += tz_cost
+            seen_funcs.add(fn)
+            evm_match = next((s for s in evm_steps if s.get("function_name") == fn), None)
+            evm_gas   = evm_match.get("gas_used", 0) if evm_match else None
+            if isinstance(evm_gas, int):
+                total_evm += evm_gas
+            comp_rows.append({
+                "Step": str(seq_id),
+                "Function": fn,
+                "Tezos (mutez)": tz_cost,
+                "ETH (gas)": evm_gas if evm_gas is not None else "",
+            })
+
+        # EVM-only steps (not in Tezos)
+        for evm_step in evm_steps:
+            fn = evm_step.get("function_name", "")
+            if fn not in seen_funcs:
+                evm_gas = evm_step.get("gas_used", 0) or 0
+                total_evm += evm_gas
+                comp_rows.append({
+                    "Step": str(evm_step.get("step", "")),
+                    "Function": fn,
+                    "Tezos (mutez)": "",
+                    "ETH (gas)": evm_gas,
+                })
+
+        if comp_rows:
+            comp_rows.append({
+                "Step": "Total",
+                "Function": "",
+                "Tezos (mutez)": total_tezos,
+                "ETH (gas)": total_evm,
+            })
+
+        with st.expander(f"📈 {trace_name}", expanded=True):
+            if comp_rows:
+                _df = pd.DataFrame(comp_rows)
+                # Ensure uniform types — Arrow requires each column to have one dtype
+                for _col in ("Tezos (mutez)", "ETH (gas)"):
+                    if _col in _df.columns:
+                        _df[_col] = _df[_col].apply(
+                            lambda v: int(v) if isinstance(v, (int, float)) and v != "" else (v if v != "" else 0)
+                        )
+                st.dataframe(_df, width='stretch', hide_index=True)
             else:
-                st.info("No step results recorded.")
+                st.info("No execution data available for this trace.")
 
 
 def upload_trace_file():
@@ -223,6 +405,7 @@ def select_trace_file():
     if view_mode == "Trace Report":
         render_trace_report()
         render_evm_trace_results()
+        render_cross_chain_comparison()
         return
 
     report = get_trace_report_state()
@@ -453,6 +636,62 @@ def select_trace_file():
         else:
             st.warning("No toolchain configured for this trace.")
 
+    # --- Network Selection (Change 7) ---
+    selected_networks: dict = {}
+    with st.container(border=True):
+        st.subheader("🌐 Network Selection")
+        active_chain_keys = [k for k in selected_toolchain_keys if k in ("tezos", "evm", "solana")]
+        if active_chain_keys:
+            net_cols = st.columns(len(active_chain_keys))
+            for _i, _chain_key in enumerate(active_chain_keys):
+                with net_cols[_i]:
+                    if _chain_key == "tezos":
+                        selected_networks["tezos"] = st.selectbox(
+                            "🔷 Tezos",
+                            options=["ghostnet"],
+                            key=f"rosetta_network_tezos_{selected_contract}_{execution_mode}",
+                        )
+                    elif _chain_key == "evm":
+                        selected_networks["evm"] = st.selectbox(
+                            "⚡ Ethereum (EVM)",
+                            options=["localhost", "sepolia", "mainnet"],
+                            key=f"rosetta_network_evm_{selected_contract}_{execution_mode}",
+                        )
+                    elif _chain_key == "solana":
+                        selected_networks["solana"] = st.selectbox(
+                            "🌞 Solana",
+                            options=["devnet", "testnet", "mainnet-beta"],
+                            key=f"rosetta_network_solana_{selected_contract}_{execution_mode}",
+                        )
+        else:
+            st.caption("Select at least one toolchain to configure the network.")
+
+    # --- Execution Plan (Change 5) ---
+    _plan_trace_data = (
+        contract_traces[selected_trace]
+        if selected_trace and selected_trace in contract_traces
+        else next(iter(contract_traces.values()))
+    )
+    with st.expander("📋 Execution Plan", expanded=True):
+        _plan_rows = []
+        for _step in _plan_trace_data.get("trace_execution", []):
+            _row = {
+                "Seq": _step.get("sequence_id", ""),
+                "Function": _step.get("function_name", ""),
+                "Actors": ", ".join(_step.get("actors", [])),
+                "Wait (blocks)": _step.get("waiting_time", 0),
+                "Args": str(_step.get("args", {})),
+            }
+            if "evm" in selected_toolchain_keys:
+                _row["EVM method"] = _step.get("evm", {}).get("method", _step.get("function_name", ""))
+            if "tezos" in selected_toolchain_keys:
+                _row["Tezos entrypoint"] = _step.get("tezos", {}).get("entrypoint", "")
+            _plan_rows.append(_row)
+        if _plan_rows:
+            st.dataframe(pd.DataFrame(_plan_rows), width='stretch', hide_index=True)
+        else:
+            st.info("No execution steps found in this trace.")
+
     button_label = ("▶️ Execute selected trace" if execution_mode == "Single trace"
                     else "▶️ Execute all traces in contract")
 
@@ -469,6 +708,7 @@ def select_trace_file():
             "initial_balance": initial_balance, "selected_trace_suite": selected_trace_suite,
             "show_live_terminal_output": show_live_terminal_output,
             "selected_toolchain_keys": selected_toolchain_keys,
+            "selected_networks": selected_networks,
         })
 
         # ── 1. Build chain list and column layout ──────────────────────────────────────────────
@@ -563,20 +803,33 @@ def select_trace_file():
                 if contract_traces[t].get("configuration", {}).get("evm", {}).get("use", "false").lower() == "true"
             ]
 
+            evm_title = (
+                f"Trace report for {selected_trace if execution_mode == 'Single trace' else selected_contract}"
+            )
+
             with evm_col:
                 st.subheader(_chain_labels["evm"])
-                evm_progress = st.progress(0.0)
-                evm_caption = st.empty()
+                (evm_status_box, evm_progress_bar, evm_results_placeholder,
+                 _evm_terminals, evm_metrics_placeholder) = render_live_trace_progress(
+                    title=evm_title,
+                    total_traces=len(evm_trace_list),
+                    show_terminal_output=False,
+                )
 
+            completed_rows = []
             try:
                 for evm_idx, trace_name in enumerate(evm_trace_list):
                     trace_data = contract_traces[trace_name]
                     contract_deployment_id = trace_data.get("trace_title", selected_contract).lower()
 
+                    update_live_trace_progress(
+                        status_box=evm_status_box, progress_bar=evm_progress_bar,
+                        results_placeholder=evm_results_placeholder, completed_items=completed_rows,
+                        total_traces=len(evm_trace_list), current_trace=trace_name,
+                        metrics_placeholder=evm_metrics_placeholder,
+                    )
+
                     with evm_col:
-                        evm_caption.caption(
-                            f"⏳ Traccia corrente: `{trace_name}` ({evm_idx + 1}/{len(evm_trace_list)})"
-                        )
                         deploy_phase_status = (
                             st.status(f"🔄 Deploy — `{trace_name}`", expanded=True)
                             if execute_deploy else None
@@ -593,21 +846,37 @@ def select_trace_file():
                             execute_compile=execute_compile,
                             initial_balance=initial_balance if execute_deploy else None,
                             phase_statuses={"deploy": deploy_phase_status, "execute": execute_phase_status},
+                            network_override=selected_networks.get("evm", "localhost"),
                         )
 
                     evm_collected.append({"trace_name": trace_name, "result": result or {}})
-                    with evm_col:
-                        evm_progress.progress((evm_idx + 1) / max(len(evm_trace_list), 1))
-                        if evm_idx + 1 == len(evm_trace_list):
-                            evm_caption.caption(
-                                f"✅ Completate {len(evm_trace_list)}/{len(evm_trace_list)} tracce"
-                            )
+
+                    _steps = (result or {}).get("results", [])
+                    completed_rows.append({
+                        "Trace": trace_name,
+                        "Status": "success" if (result or {}).get("success", False) else "error",
+                        "Steps": len(_steps),
+                        "Gas": sum(s.get("gas_used", 0) or 0 for s in _steps),
+                        "Address": (result or {}).get("contract_address") or "-",
+                    })
+                    update_live_trace_progress(
+                        status_box=evm_status_box, progress_bar=evm_progress_bar,
+                        results_placeholder=evm_results_placeholder, completed_items=completed_rows,
+                        total_traces=len(evm_trace_list),
+                        metrics_placeholder=evm_metrics_placeholder,
+                    )
 
             except Exception as e:
                 evm_collected.append({
                     "trace_name": "unknown",
                     "result": {"success": False, "error": str(e), "results": [], "network": "unknown"},
                 })
+                update_live_trace_progress(
+                    status_box=evm_status_box, progress_bar=evm_progress_bar,
+                    results_placeholder=evm_results_placeholder, completed_items=completed_rows,
+                    total_traces=len(evm_trace_list), has_error=True,
+                    metrics_placeholder=evm_metrics_placeholder,
+                )
                 with evm_col:
                     st.error(f"❌ EVM execution error: {e}")
 

@@ -121,7 +121,7 @@ def main():
     fig1.update_xaxes(tickfont=dict(color="black"), title_font=dict(color="black"))
     fig1.update_yaxes(tickfont=dict(color="black"), title_font=dict(color="black"))
 
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, width='stretch')
 
     # ============ GRAFICO 2: NORMALIZZATO (%) ============
 #
@@ -155,7 +155,7 @@ def main():
 #        template="plotly_white",
 #    )
 #
-#    st.plotly_chart(fig2, use_container_width=True)
+#    st.plotly_chart(fig2, width='stretch')
 
 
 main()

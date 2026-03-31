@@ -19,7 +19,6 @@ from contractUtils import (
     multiOrigination
 )
 from folderScan import folderScan, contractSuites, scenarioScan
-from csvUtils import csvReader, csvWriter
 from jsonUtils import getAddress, addressUpdate, jsonWriter, jsonReader, resolveAddress, normalizeTraceTitle, extractContractIdFromTraceTitle, updateDeploymentLevel, getDeploymentLevel, normalizeContractName, outputTraceWriter
 
 
@@ -131,42 +130,6 @@ def interactionSetup(client, contractId):
     return infoResult
 
 
-def executionSetupCsv(contractId, rows):
-    infoResultDict = {}
-    for element in rows:
-        row = rows[element]
-        entrypointSel = row[0]
-        walletSel = row[1]
-        tezAmount = parseAmountToTez(row[len(row)-1])
-        parameters = row[2:len(row)-1] if row[2:len(row)-1] != [] else []
-
-        addressValid = getAddress()
-        contractAddress = resolveAddress(addressValid=addressValid, contractId=contractId)
-        contractInterface = pytezos.contract(contractAddress)
-        entrypoints = contractInterface.entrypoints
-        if entrypointSel not in entrypoints:
-            raise Exception("Entrypoint not found: " + entrypointSel)
-
-        with open(_TOOLCHAIN_DIR / "wallet.json", 'r', encoding='utf-8') as file:
-            wallet = json.load(file)
-        key = wallet[walletSel]
-        client = pytezos.using(shell="ghostnet", key=key)
-
-        opResult = entrypointCall(
-            client=client,
-            contractAddress=contractAddress,
-            entrypointName=entrypointSel,
-            parameters=parameters,
-            tezAmount=tezAmount
-        )
-        infoResult = callInfoResult(opResult=opResult)
-        infoResult["contract"] = contractId
-        infoResult["entryPoint"] = entrypointSel
-
-        infoResultDict[element] = infoResult
-
-    return infoResultDict
-
 
 def normalizeWalletLabel(value):
     return str(value).strip().lower()
@@ -264,23 +227,11 @@ def parseAmountToTez(amountValue):
     if isinstance(amountValue, Decimal):
         return amountValue
 
-    if isinstance(amountValue, int):
-        return Decimal(amountValue)
-
     if isinstance(amountValue, float):
         return Decimal(str(amountValue))
 
-    text = str(amountValue).strip()
-
     try:
-        if text.startswith("mutez(") and text.endswith(")"):
-            mutez_value = Decimal(text[6:-1].strip())
-            return mutez_value / Decimal("1000000")
-
-        if text.startswith("tez(") and text.endswith(")"):
-            return Decimal(text[4:-1].strip())
-
-        return Decimal(text)
+        return Decimal(str(amountValue).strip())
     except InvalidOperation as e:
         raise ValueError(f"Invalid tez amount: {amountValue}") from e
 
@@ -740,8 +691,6 @@ def compileAndDeployForTrace(client, selectedContract, traceData, shouldCompile,
 
 def exportResult(opResult):
     fileName = "transactionsOutput"
-    csvWriter(fileName=fileName + ".csv", op_result=opResult)
-    print("\nCSV Updated!\n\n")
     jsonWriter(fileName=fileName + ".json", opReport=opResult)
     print("\nJSON Updated!\n\n")
 
@@ -816,18 +765,10 @@ def main():
             main()
 
         case 4:
-            formatSel = input("CSV(1) or JSON(2)?")
-            if str(formatSel) == "1":
-                contractExecutionTraces = csvReader()
-                for contract in contractExecutionTraces:
-                    results = executionSetupCsv(contractId=contract, rows=contractExecutionTraces[contract])
-                    for result in results:
-                        exportResult(results[result])
-            else:
-                traceExecutionTraces = jsonReader(traceRoot=getTraceRoot())
-                for traceName, traceData in traceExecutionTraces.items():
-                    results = executionSetupJson(contractId=traceName, traceData=traceData)
-                    exportTraceResult(traceData=traceData, resultsDict=results, traceName=traceName)
+            traceExecutionTraces = jsonReader(traceRoot=getTraceRoot())
+            for traceName, traceData in traceExecutionTraces.items():
+                results = executionSetupJson(contractId=traceName, traceData=traceData)
+                exportTraceResult(traceData=traceData, resultsDict=results, traceName=traceName)
 
             main()
 
